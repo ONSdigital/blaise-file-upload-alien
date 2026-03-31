@@ -1,0 +1,12 @@
+.vs/
+bin/
+obj/
+*.bmix
+*.msux
+*.bpkg
+*.mbpkg
+*.backup
+*.cari
+*.pdf
+*.usersettings
+*.msg.txt
