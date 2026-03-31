@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Solution Name="FileUploadAlien">
+  <StartupProject RelativePath="true">FileUploadAlien.bproj</StartupProject>
+  <ProjectItems>
+    <Project RelativePath="true" BuildSequence="2">FileUploadAlien.bproj</Project>
+  </ProjectItems>
+</Solution>

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project Name="FileUploadAlien" Guid="cb6fdbc5-6ce7-4329-b9f7-bc7e3d04b679" ProjectType="DatamodelProject">
+  <MainFile RelativePath="true">FileUploadAlien.blax</MainFile>
+  <FileItems>
+    <File FileType="DatamodelFileType" RelativePath="true">FileUploadAlien.blax</File>
+    <File FileType="ResourceDatabaseFileType" RelativePath="true">FileUploadAlien.blrd</File>
+    <File FileType="IncludeFileType" RelativePath="true">bFile.incx</File>
+  </FileItems>
+  <Properties>
+    <SurveyRoot />
+    <ConditionalDefines />
+    <DatamodelSearchPath />
+    <ExternalSearchPath />
+    <IncludeSearchPath />
+    <LibrarySearchPath />
+    <ResourceDB RelativePath="true">FileUploadAlien.blrd</ResourceDB>
+    <SupportedModes />
+    <UsedResourceSets />
+    <AppSupport />
+    <IsRunnableSurvey>True</IsRunnableSurvey>
+    <CatiRole />
+    <UseCari>False</UseCari>
+    <WebDataEntryClient>MvcDebug</WebDataEntryClient>
+    <ContentSecurityPolicyFileName />
+    <AddFieldGroupOrderInformation>False</AddFieldGroupOrderInformation>
+    <IgnoreLayoutErrors>False</IgnoreLayoutErrors>
+    <IgnoreRichtextErrors>False</IgnoreRichtextErrors>
+    <StartCondition />
+    <ActionsSetup />
+    <DataConversionSetup />
+    <DownloadInterceptorSetup />
+    <WriteInterceptorSetup />
+    <RunWriteInterceptorSetupAsynchronously>False</RunWriteInterceptorSetupAsynchronously>
+  </Properties>
+</Project>

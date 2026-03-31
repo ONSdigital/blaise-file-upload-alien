@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LayoutSpecification xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Name="FileUploadAlien" Version="13" GenerateAllSections="true" GenerateClientRules="true" UseGenericPages="true">
+  <InstanceLayoutInstructions>
+    <RouteItemLayoutInstructions RouteItemName="Last">
+      <Instructions>
+        <NewPageInstruction Locator="Before" />
+      </Instructions>
+    </RouteItemLayoutInstructions>
+  </InstanceLayoutInstructions>
+  <BlockLayoutInstructions>
+    <BlockLayoutInstructions BlockName="bFile">
+      <RouteItemInstructions>
+        <RouteItemLayoutInstructions RouteItemName="File">
+          <Instructions>
+            <CriticalFieldInstruction />
+            <AllowClientRuleInstruction Allow="false" />
+          </Instructions>
+        </RouteItemLayoutInstructions>
+        <RouteItemLayoutInstructions RouteItemName="auxFileUploaded">
+          <Instructions>
+            <TemplateInstruction TemplateName="QuestionTextOnly" TemplateTarget="FieldPane" Parameters="{ParameterValues Visibility={Expression IF (Field.RouteStatus = Keep OR Field.RouteStatus = OffRoute) OR LEN(Field.ValueAsText) = 0 THEN 'Collapsed' ELSE 'Visible' ENDIF}}" />
+          </Instructions>
+        </RouteItemLayoutInstructions>
+      </RouteItemInstructions>
+    </BlockLayoutInstructions>
+  </BlockLayoutInstructions>
+  <Languages>
+    <Language Name="" />
+  </Languages>
+  <LayoutSets>
+    <LayoutSet Name="Interviewing1" ResourceSetName="Large" StyleName="Indigo" RequiredStyle="false" DesignHeight="0" DesignWidth="0" ResizeMode="Auto" RouteItemsPerPage="4" RowsPerTable="999" ReceiptPageName="Default" IntroPageName="" ResumePageName="" AbortPageName="Default">
+      <Parallels>
+        <Parallel Name="">
+          <IsGeneric>false</IsGeneric>
+        </Parallel>
+        <Parallel Name="PRIMARY">
+          <IsGeneric>false</IsGeneric>
+        </Parallel>
+      </Parallels>
+    </LayoutSet>
+  </LayoutSets>
+  <LayoutSetGroups>
+    <LayoutSetGroup Name="Interviewing" DataEntrySettingsName="StrictInterviewing">
+      <LayoutSetNames>
+        <string>Interviewing1</string>
+      </LayoutSetNames>
+    </LayoutSetGroup>
+  </LayoutSetGroups>
+  <RoleReferences>
+    <RoleReference Name="Help" />
+    <RoleReference Name="Watermark" />
+    <RoleReference Name="ToolTip" />
+    <RoleReference Name="SpecialAnswer" />
+    <RoleReference Name="CategoryGroup" />
+    <RoleReference Name="EditMask" />
+    <RoleReference Name="Included" />
+    <RoleReference Name="Excluded" />
+    <RoleReference Name="Emphasized" />
+    <RoleReference Name="Optional" />
+    <RoleReference Name="Instructional" />
+  </RoleReferences>
+  <TypeReferences>
+    <TypeReference Name="THeader" />
+    <TypeReference Name="TCurrency" />
+  </TypeReferences>
+  <LayoutSpecFieldReferences xmlns="layoutspec">
+    <LayoutSpecFieldReference Name="RespondentTimeZone" />
+    <LayoutSpecFieldReference Name="RespondentTime" />
+    <LayoutSpecFieldReference Name="MainSurveyName" />
+    <LayoutSpecFieldReference Name="InstrumentID" />
+    <LayoutSpecFieldReference Name="InterviewerID" />
+    <LayoutSpecFieldReference Name="CaseID" />
+    <LayoutSpecFieldReference Name="SomeSetField" />
+  </LayoutSpecFieldReferences>
+</LayoutSpecification>

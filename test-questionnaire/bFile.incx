@@ -1,0 +1,43 @@
+﻿PROCEDURE StoreFile
+PARAMETERS // these can be expanded to provide whatever you'd like to the API
+   Id : INTEGER
+   FileMeta : STRING
+   File : BLOBTYPE
+EXPORT FileId : STRING
+ALIEN('POST', 'http://localhost:5123/api/file')
+ENDPROCEDURE
+
+BLOCK bFile
+PARAMETERS Identifier : STRING // used to identify the file once it's processed on the server
+FIELDS
+   FileId  : STRING
+AUXFIELDS
+   File "Upload a file": BLOBTYPE, EMPTY
+AUXFIELDS
+   auxFileUploaded "^{auxFileUploaded}" : STRING, EMPTY
+RULES
+   // the idea is that if the respondent has not anwered, the normal blob field is shown
+   // once the blob field is stored, the alien procedure is called
+   // the FileId is filled and the blob question is emptied and taken off route
+   // the respondent can then use a button to clear their answer and upload a new file
+   File.KEEP
+   FileId.KEEP
+   IF File = RESPONSE THEN
+      StoreFile(Id, Identifier, File, FileId)
+      File := EMPTY
+      auxFileUploaded := 
+      'File is already uploaded with id: ' + FileId + '<newline>
+      <button
+         text=\"Clear field\"
+         OnClick="{Action AssignField(\'Field\', \'EMPTY\', \'\'}"
+      >'
+   ELSE
+      File
+   ENDIF
+   auxFileUploaded
+LAYOUT
+   AT File CRITICAL
+   AT File NOCLIENTRULE
+   // added visibility as parameter to QuestionTextOnly
+   AT auxFileUploaded FIELDPANE TEMPLATE "QuestionTextOnly"(Visibility:='{Expression IF (Field.RouteStatus = Keep OR Field.RouteStatus = OffRoute) OR LEN(Field.ValueAsText) = 0 THEN \'Collapsed\' ELSE \'Visible\' ENDIF}')
+ENDBLOCK //bFile
