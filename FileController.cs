@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System;
 using System.IO;
@@ -25,46 +26,58 @@ namespace BlaiseFileUploadAlien.Controller
         }
 
         [HttpPost]
-        public IActionResult StoreFile([FromBody] FileDto FileDto)
+        public IActionResult StoreFile([FromBody] FileDto fileDto)
         {
-            if (FileDto?.File == null) return BadRequest("No file provided");
+            if (fileDto?.File == null || fileDto.File.Length == 0)
+                return BadRequest("No file provided or file is empty.");
 
             try
             {
-                _logger.LogInformation("Processing file upload for case {CaseId}", FileDto.Id);
-                
-                var fileBytes = FileDto.File.Select(i => (byte)i).ToArray();
+                _logger.LogInformation("Processing file upload for case {CaseId}", fileDto.Id);
 
-                var ext = GetExtension(fileBytes);
+                // Validates magic bytes
+                if (!TryValidateAndGetExtension(fileDto.File, out string ext))
+                {
+                    _logger.LogWarning("Invalid or corrupted file signature detected for case {CaseId}", fileDto.Id);
+                    return BadRequest("Invalid file type or corrupted file.");
+                }
+
+                // Generates secure ID
                 var shortId = Convert.ToBase64String(Guid.NewGuid().ToByteArray())
-                    .Replace("/", "_").Replace("+", "-").Substring(0, 8);
+                    .Replace("/", "_")
+                    .Replace("+", "-")
+                    .Substring(0, 8);
 
-                // construct filename
-                var fileName = $"{FileDto.Id}_{FileDto.FileMeta}_{shortId}.{ext}";
+                // Construct filename
+                var fileName = $"{fileDto.Id}_{fileDto.FileMeta}_{shortId}.{ext}";
                 var fullPath = Path.Combine(_storagePath, fileName);
 
-                System.IO.File.WriteAllBytes(fullPath, fileBytes);
+                // Save to disk/bucket
+                System.IO.File.WriteAllBytes(fullPath, fileDto.File);
 
                 _logger.LogInformation("File successfully written to {FilePath}", fullPath);
 
-                return Content(JsonSerializer.Serialize(fileName));
+                return Content(JsonSerializer.Serialize(fileName), "application/json");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to save file for case {CaseId}", FileDto.Id);
+                _logger.LogError(ex, "Failed to save file for case {CaseId}", fileDto.Id);
                 return StatusCode(500, "Internal Server Error");
             }
         }
 
-        private static string GetExtension(byte[] bytes)
+        private static bool TryValidateAndGetExtension(byte[] bytes, out string extension)
         {
-            if (bytes.Length < 4) return "bin";
-            if (bytes[0] == 0x89 && bytes[1] == 0x50) return "png";
-            if (bytes[0] == 0xFF && bytes[1] == 0xD8) return "jpg";
-            if (bytes[0] == 0x47 && bytes[1] == 0x49 && bytes[2] == 0x46) return "gif";
-            if (bytes[0] == 0x25 && bytes[1] == 0x50) return "pdf";
-            if (bytes[0] == 0x50 && bytes[1] == 0x4B) return "zip";
-            return "bin";
+            extension = string.Empty;
+
+            if (bytes == null || bytes.Length < 4) return false;
+            if (bytes[0] == 0x89 && bytes[1] == 0x50) { extension = "png"; return true; }
+            if (bytes[0] == 0xFF && bytes[1] == 0xD8) { extension = "jpg"; return true; }
+            if (bytes[0] == 0x47 && bytes[1] == 0x49 && bytes[2] == 0x46) { extension = "gif"; return true; }
+            if (bytes[0] == 0x25 && bytes[1] == 0x50) { extension = "pdf"; return true; }
+            if (bytes[0] == 0x50 && bytes[1] == 0x4B) { extension = "zip"; return true; }
+            
+            return false;
         }
     }
 }

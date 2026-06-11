@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace BlaiseFileUploadAlien
 {
@@ -10,6 +11,7 @@ namespace BlaiseFileUploadAlien
         public string FileMeta { get; set; } = string.Empty;
         
         [Required]
-        public int[] File { get; set; } = []; 
+        [JsonConverter(typeof(StreamingIntArrayToByteArrayConverter))]
+        public byte[] File { get; set; } = [];
     }
 }
