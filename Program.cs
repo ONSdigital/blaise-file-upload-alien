@@ -49,7 +49,13 @@ if (runningOnGcp)
 }
 
 var port = "5123";
-builder.WebHost.UseUrls($"http://localhost:{port}");
+builder.WebHost.UseUrls($"http://127.0.0.1:{port}");
+
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = 60 * 1024 * 1024; // 60 MB Max Limit
+});
+
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
