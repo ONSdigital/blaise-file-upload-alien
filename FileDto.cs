@@ -1,17 +1,21 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
-namespace BlaiseFileUploadAlien
+namespace BlaiseFileUploadAlien;
+
+public class FileDto : IDisposable
 {
-    public class FileDto
+    [Required]
+    public int Id { get; set; }
+
+    public string FileMeta { get; set; } = string.Empty;
+
+    [Required]
+    [JsonConverter(typeof(StreamingIntArrayToStreamConverter))]
+    public Stream File { get; set; } = Stream.Null;
+
+    public void Dispose()
     {
-        [Required]
-        public int Id { get; set; }
-        
-        public string FileMeta { get; set; } = string.Empty;
-        
-        [Required]
-        [JsonConverter(typeof(StreamingIntArrayToByteArrayConverter))]
-        public byte[] File { get; set; } = [];
+        File?.Dispose();
     }
 }

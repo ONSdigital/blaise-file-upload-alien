@@ -53,7 +53,10 @@ namespace BlaiseFileUploadAlien.Controller
                 var fullPath = Path.Combine(_storagePath, fileName);
 
                 // Save to disk/bucket
-                System.IO.File.WriteAllBytes(fullPath, fileDto.File);
+                using (var fileStream = new FileStream(fullPath, FileMode.Create, FileAccess.Write))
+                {
+                    fileDto.File.CopyTo(fileStream);
+                }
 
                 _logger.LogInformation("File successfully written to {FilePath}", fullPath);
 
@@ -64,18 +67,29 @@ namespace BlaiseFileUploadAlien.Controller
                 _logger.LogError(ex, "Failed to save file for case {CaseId}", fileDto.Id);
                 return StatusCode(500, "Internal Server Error");
             }
+            finally
+            {
+                fileDto.Dispose();
+            }
         }
 
-        private static bool TryValidateAndGetExtension(byte[] bytes, out string extension)
+        private static bool TryValidateAndGetExtension(Stream stream, out string extension)
         {
             extension = string.Empty;
 
-            if (bytes == null || bytes.Length < 4) return false;
-            if (bytes[0] == 0x89 && bytes[1] == 0x50) { extension = "png"; return true; }
-            if (bytes[0] == 0xFF && bytes[1] == 0xD8) { extension = "jpg"; return true; }
-            if (bytes[0] == 0x47 && bytes[1] == 0x49 && bytes[2] == 0x46) { extension = "gif"; return true; }
-            if (bytes[0] == 0x25 && bytes[1] == 0x50) { extension = "pdf"; return true; }
-            if (bytes[0] == 0x50 && bytes[1] == 0x4B) { extension = "zip"; return true; }
+            if (stream == null || stream.Length < 4) return false;
+
+            byte[] buffer = new byte[4];
+            stream.ReadExactly(buffer, 0, 4);
+
+            stream.Position = 0;
+
+            if (buffer == null || buffer.Length < 4) return false;
+            if (buffer[0] == 0x89 && buffer[1] == 0x50) { extension = "png"; return true; }
+            if (buffer[0] == 0xFF && buffer[1] == 0xD8) { extension = "jpg"; return true; }
+            if (buffer[0] == 0x47 && buffer[1] == 0x49 && buffer[2] == 0x46) { extension = "gif"; return true; }
+            if (buffer[0] == 0x25 && buffer[1] == 0x50) { extension = "pdf"; return true; }
+            if (buffer[0] == 0x50 && buffer[1] == 0x4B) { extension = "zip"; return true; }
             
             return false;
         }
