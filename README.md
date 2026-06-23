@@ -32,6 +32,13 @@ Blaise File Upload Alien is a minimal ASP.NET Core Web API (using .NET 10) for u
     dotnet publish -c Release -r win-x64 --self-contained false -o \BlaiseServices\BlaiseFileUploadAlien\
     ```
 
+2. Authenticate your local machine
+
+    ```
+    gcloud config set project <YOUR_PROJECT_ID>
+    gcloud auth application-default login
+    ```
+
 2. Run the application as a console app (requires .NET 8 Hosting Bundle installed):
     ```
     cd \BlaiseServices\BlaiseFileUploadAlien\

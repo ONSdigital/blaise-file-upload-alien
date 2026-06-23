@@ -5,6 +5,8 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using Google.Apis.Auth.OAuth2;
+using Google.Cloud.Storage.V1;
 
 namespace BlaiseFileUploadAlien.Controller
 {
@@ -53,6 +55,10 @@ namespace BlaiseFileUploadAlien.Controller
                 var fullPath = Path.Combine(_storagePath, fileName);
 
                 // Save to disk/bucket
+
+                UploadFileToStorage(fileDto.File, fileName, ext);
+                _logger.LogInformation("File successfully uploaded to bucket TODO");
+
                 using (var fileStream = new FileStream(fullPath, FileMode.Create, FileAccess.Write))
                 {
                     fileDto.File.CopyTo(fileStream);
@@ -69,8 +75,27 @@ namespace BlaiseFileUploadAlien.Controller
             }
             finally
             {
-                fileDto.Dispose();
+                fileDto.Dispose(); 
             }
+        }
+
+        private bool UploadFileToStorage(Stream fileStream, string fileName, string ext)
+        {
+            // Automatically finds the metadata server? and pulls the token for Blaise Compute service account
+            GoogleCredential defaultCredential = GoogleCredential.GetApplicationDefault();
+
+            var impersonatedCredential = defaultCredential.Impersonate(
+                new ImpersonatedCredential.Initializer("bucket-uploader-sa@ons-blaise-v2-dev-ben1.iam.gserviceaccount.com")
+                {
+                    Scopes = new[] { "https://www.googleapis.com/auth/devstorage.read_write" }
+                }
+            );
+
+            var storageClient = StorageClient.Create(impersonatedCredential);
+
+            storageClient.UploadObject("ons-blaise-v2-dev-ben1-rat", fileName, GetContentType(ext), fileStream);
+
+            return true; // TODO: Handle errors and return false if upload fails
         }
 
         private static bool TryValidateAndGetExtension(Stream stream, out string extension)
@@ -92,6 +117,22 @@ namespace BlaiseFileUploadAlien.Controller
             if (buffer[0] == 0x50 && buffer[1] == 0x4B) { extension = "zip"; return true; }
             
             return false;
+        }
+
+        private string GetContentType(string extension)
+        {
+            return extension switch
+            {
+                "png" => "image/png",
+                "jpg" => "image/jpeg",
+                "jpeg" => "image/jpeg",
+                "gif" => "image/gif",
+                "pdf" => "application/pdf",
+                "zip" => "application/zip",
+
+                // If file type is not recognised, tell GCP it is generic binary data
+                _ => "application/octet-stream"
+            };
         }
     }
 }
