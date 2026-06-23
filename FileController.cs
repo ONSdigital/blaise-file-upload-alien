@@ -114,7 +114,7 @@ namespace BlaiseFileUploadAlien.Controller
                     await failedStream.CopyToAsync(fileStream);
                 }
 
-                _logger.LogInformation($"Backup failed to save {remoteFileName} to {_storagePath}");
+                _logger.LogInformation($"Backup successfully saved {remoteFileName} to {_storagePath}");
             }
             catch (Exception backupEx)
             {
