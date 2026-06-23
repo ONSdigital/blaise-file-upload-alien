@@ -1,12 +1,7 @@
-﻿using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
-using System;
-using System.IO;
-using System.Linq;
-using System.Text.Json;
-using Google.Apis.Auth.OAuth2;
+﻿using Google.Apis.Auth.OAuth2;
 using Google.Cloud.Storage.V1;
+using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
 
 namespace BlaiseFileUploadAlien.Controller
 {
@@ -15,11 +10,14 @@ namespace BlaiseFileUploadAlien.Controller
     public class FileController : ControllerBase
     {
         private readonly ILogger<FileController> _logger;
+        private readonly StorageClient _storageClient;
         private readonly string _storagePath = @"C:\BlaiseFileUploads";
+        private readonly string _bucketName = "ons-blaise-v2-dev-ben1-rat";
 
-        public FileController(ILogger<FileController> logger)
+        public FileController(ILogger<FileController> logger, StorageClient storageClient)
         {
             _logger = logger;
+            _storageClient = storageClient;
 
             if (!Directory.Exists(_storagePath))
             {
@@ -28,7 +26,7 @@ namespace BlaiseFileUploadAlien.Controller
         }
 
         [HttpPost]
-        public IActionResult StoreFile([FromBody] FileDto fileDto)
+        public async Task<IActionResult> StoreFile([FromBody] FileDto fileDto)
         {
             if (fileDto?.File == null || fileDto.File.Length == 0)
                 return BadRequest("No file provided or file is empty.");
@@ -37,7 +35,7 @@ namespace BlaiseFileUploadAlien.Controller
             {
                 _logger.LogInformation("Processing file upload for case {CaseId}", fileDto.Id);
 
-                // Validates magic bytes
+                // Validates magic bytes and get file extension
                 if (!TryValidateAndGetExtension(fileDto.File, out string ext))
                 {
                     _logger.LogWarning("Invalid or corrupted file signature detected for case {CaseId}", fileDto.Id);
@@ -52,19 +50,9 @@ namespace BlaiseFileUploadAlien.Controller
 
                 // Construct filename
                 var fileName = $"{fileDto.Id}_{fileDto.FileMeta}_{shortId}.{ext}";
-                var fullPath = Path.Combine(_storagePath, fileName);
 
                 // Save to disk/bucket
-
-                UploadFileToStorage(fileDto.File, fileName, ext);
-                _logger.LogInformation("File successfully uploaded to bucket TODO");
-
-                using (var fileStream = new FileStream(fullPath, FileMode.Create, FileAccess.Write))
-                {
-                    fileDto.File.CopyTo(fileStream);
-                }
-
-                _logger.LogInformation("File successfully written to {FilePath}", fullPath);
+                await UploadFileToStorage(fileDto.File, fileName, ext);
 
                 return Content(JsonSerializer.Serialize(fileName), "application/json");
             }
@@ -79,23 +67,59 @@ namespace BlaiseFileUploadAlien.Controller
             }
         }
 
-        private bool UploadFileToStorage(Stream fileStream, string fileName, string ext)
+        private async Task UploadFileToStorage(Stream dataStream, string remoteFileName, string ext)
         {
-            // Automatically finds the metadata server? and pulls the token for Blaise Compute service account
-            GoogleCredential defaultCredential = GoogleCredential.GetApplicationDefault();
+            int maxAttempts = 3;
+            int delayBetweenRetriesMs = 5000;
+            string contentType = GetContentType(ext);
 
-            var impersonatedCredential = defaultCredential.Impersonate(
-                new ImpersonatedCredential.Initializer("bucket-uploader-sa@ons-blaise-v2-dev-ben1.iam.gserviceaccount.com")
+            for (int attempt = 1; attempt <= maxAttempts; attempt++)
+            {
+                try
                 {
-                    Scopes = new[] { "https://www.googleapis.com/auth/devstorage.read_write" }
+                    dataStream.Position = 0;
+                    await _storageClient.UploadObjectAsync(
+                        _bucketName,
+                        remoteFileName,
+                        contentType,
+                        dataStream
+                    );
+
+                    _logger.LogInformation($"Successfully uploaded {remoteFileName} on attempt {attempt}.");
+                    return;
                 }
-            );
+                catch (Exception ex)
+                {
+                    _logger.LogWarning($"Attempt {attempt} to upload {remoteFileName} failed: {ex.Message}");
+                    if (attempt == maxAttempts)
+                    {
+                        await SaveFailedStreamToDiskAsync(dataStream, remoteFileName);
+                        _logger.LogError(ex, "Failed to save upload file to bucket");
+                        throw;
+                    }
+                    await Task.Delay(delayBetweenRetriesMs);
+                }
+            }
+        }
 
-            var storageClient = StorageClient.Create(impersonatedCredential);
+        private async Task SaveFailedStreamToDiskAsync(Stream failedStream, string remoteFileName)
+        {
+            try
+            {
+                failedStream.Position = 0;
+                var fullPath = Path.Combine(_storagePath, remoteFileName);
 
-            storageClient.UploadObject("ons-blaise-v2-dev-ben1-rat", fileName, GetContentType(ext), fileStream);
+                using (var fileStream = new FileStream(fullPath, FileMode.Create, FileAccess.Write, FileShare.None, 4096, useAsync: true))
+                {
+                    await failedStream.CopyToAsync(fileStream);
+                }
 
-            return true; // TODO: Handle errors and return false if upload fails
+                _logger.LogInformation($"Backup failed to save {remoteFileName} to {_storagePath}");
+            }
+            catch (Exception backupEx)
+            {
+                _logger.LogError(backupEx, "Failed to upload to Bucket and failed to dump memory stream to local disk");
+            }
         }
 
         private static bool TryValidateAndGetExtension(Stream stream, out string extension)
@@ -109,7 +133,6 @@ namespace BlaiseFileUploadAlien.Controller
 
             stream.Position = 0;
 
-            if (buffer == null || buffer.Length < 4) return false;
             if (buffer[0] == 0x89 && buffer[1] == 0x50) { extension = "png"; return true; }
             if (buffer[0] == 0xFF && buffer[1] == 0xD8) { extension = "jpg"; return true; }
             if (buffer[0] == 0x47 && buffer[1] == 0x49 && buffer[2] == 0x46) { extension = "gif"; return true; }
@@ -119,7 +142,7 @@ namespace BlaiseFileUploadAlien.Controller
             return false;
         }
 
-        private string GetContentType(string extension)
+        private static string GetContentType(string extension)
         {
             return extension switch
             {
@@ -129,8 +152,6 @@ namespace BlaiseFileUploadAlien.Controller
                 "gif" => "image/gif",
                 "pdf" => "application/pdf",
                 "zip" => "application/zip",
-
-                // If file type is not recognised, tell GCP it is generic binary data
                 _ => "application/octet-stream"
             };
         }
