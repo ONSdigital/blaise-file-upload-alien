@@ -23,22 +23,28 @@ public class StreamingIntArrayToStreamConverter : JsonConverter<Stream>
         }
 
         var stream = _memoryStreamManager.GetStream();
-
-        while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
+        try
         {
-            if (reader.TokenType == JsonTokenType.Number)
+            while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
             {
-                stream.WriteByte(reader.GetByte());
+                if (reader.TokenType == JsonTokenType.Number)
+                {
+                    stream.WriteByte(reader.GetByte());
+                }
+                else
+                {
+                    throw new JsonException("Expected numerical byte values.");
+                }
             }
-            else
-            {
-                throw new JsonException("Expected numerical byte values.");
-            }
+
+            stream.Position = 0;
+            return stream;
         }
-
-        stream.Position = 0;
-
-        return stream;
+        catch
+        {
+            stream.Dispose();
+            throw;
+        }
     }
 
     public override void Write(Utf8JsonWriter writer, Stream value, JsonSerializerOptions options)
