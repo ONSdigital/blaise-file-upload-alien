@@ -7,15 +7,8 @@ var builder = WebApplication.CreateBuilder(args);
 // Use Dependency Injection to only create one storage client
 builder.Services.AddSingleton<StorageClient>(provider =>
 {
-    string targetServiceAccount = "bucket-uploader-sa@ons-blaise-v2-dev-ben1.iam.gserviceaccount.com";
     GoogleCredential defaultCredential = GoogleCredential.GetApplicationDefault();
-    var impersonatedCredential = defaultCredential.Impersonate(
-        new ImpersonatedCredential.Initializer(targetServiceAccount)
-        {
-            Scopes = new[] { "https://www.googleapis.com/auth/devstorage.read_write" }
-        }
-    );
-    return StorageClient.Create(impersonatedCredential);
+    return StorageClient.Create(defaultCredential);
 });
 
 async Task<bool> IsRunningOnGcpVm()

@@ -32,30 +32,20 @@ Blaise File Upload Alien is a minimal ASP.NET Core Web API (using .NET 10) for u
     dotnet publish -c Release -r win-x64 --self-contained false -o \BlaiseServices\BlaiseFileUploadAlien\
     ```
 
-2. You will need to add your personal account to be able to impersonate the bucket-uploader-sa@ons-blaise-v2-dev-<sandbox>.iam.gserviceaccount.com, I did this in terraform for a sandbox like below
-
-    ```
-    resource "google_service_account_iam_member" "developer_impersonation_binding" {
-        service_account_id = google_service_account.uploader_sa.name
-        role               = "roles/iam.serviceAccountTokenCreator"
-        member             = "user:<user_email>"
-    }
-    ```
-
-3. Authenticate your local machine
+2. Authenticate your local machine
 
     ```
     gcloud config set project ons-blaise-v2-dev-<sandbox>
     gcloud auth application-default login
     ```
 
-4. Run the application as a console app (requires .NET 10 Hosting Bundle installed):
+3. Run the application as a console app (requires .NET 10 Hosting Bundle installed):
     ```
     cd \BlaiseServices\BlaiseFileUploadAlien\
     .\BlaiseFileUploadAlien.exe
     ```
 
-5. Access the API at [http://localhost:5123/swagger](http://localhost:5123/swagger) for documentation and testing.
+4. Access the API at [http://localhost:5123/swagger](http://localhost:5123/swagger) for documentation and testing.
 
 
 ## Running on a GCP VM (as a Windows Service)
