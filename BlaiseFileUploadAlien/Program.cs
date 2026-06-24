@@ -1,3 +1,4 @@
+using BlaiseFileUploadAlien;
 using Google.Apis.Auth.OAuth2;
 using Google.Cloud.Diagnostics.AspNetCore3;
 using Google.Cloud.Storage.V1;
@@ -9,6 +10,16 @@ builder.Services.AddSingleton<StorageClient>(provider =>
 {
     GoogleCredential defaultCredential = GoogleCredential.GetApplicationDefault();
     return StorageClient.Create(defaultCredential);
+});
+
+builder.Services.Configure<UploadSettings>(options =>
+{
+    builder.Configuration.GetSection("UploadSettings").Bind(options);
+    var envBucket = Environment.GetEnvironmentVariable("ENV_BLAISE_RAT_BUCKET");
+    if (!string.IsNullOrEmpty(envBucket))
+    {
+        options.BucketName = envBucket;
+    }
 });
 
 async Task<bool> IsRunningOnGcpVm()
@@ -36,6 +47,8 @@ if (runningOnGcp)
         options.ServiceName = "BlaiseFileUploadAlien";
     });
 }
+
+// ENV_BLAISE_RAT_BUCKET
 
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();

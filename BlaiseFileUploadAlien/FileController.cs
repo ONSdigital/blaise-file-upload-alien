@@ -1,6 +1,7 @@
 ﻿using Google.Apis.Auth.OAuth2;
 using Google.Cloud.Storage.V1;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using System.Text.Json;
 
 namespace BlaiseFileUploadAlien.Controller
@@ -11,13 +12,19 @@ namespace BlaiseFileUploadAlien.Controller
     {
         private readonly ILogger<FileController> _logger;
         private readonly StorageClient _storageClient;
-        private readonly string _storagePath = @"C:\BlaiseFileUploads";
-        private readonly string _bucketName = "ons-blaise-v2-dev-ben1-rat";
+        private readonly UploadSettings _uploadSettings;
+        private readonly string _storagePath;
 
-        public FileController(ILogger<FileController> logger, StorageClient storageClient)
+
+        public FileController(
+            ILogger<FileController> logger, 
+            StorageClient storageClient,
+            IOptions<UploadSettings> uploadOptions)
         {
             _logger = logger;
             _storageClient = storageClient;
+            _uploadSettings = uploadOptions.Value;
+            _storagePath = _uploadSettings.StoragePath;
 
             if (!Directory.Exists(_storagePath))
             {
@@ -69,17 +76,15 @@ namespace BlaiseFileUploadAlien.Controller
 
         private async Task UploadFileToStorage(Stream dataStream, string remoteFileName, string ext)
         {
-            int maxAttempts = 3;
-            int delayBetweenRetriesMs = 5000;
             string contentType = GetContentType(ext);
 
-            for (int attempt = 1; attempt <= maxAttempts; attempt++)
+            for (int attempt = 1; attempt <= _uploadSettings.MaxAttempts; attempt++)
             {
                 try
                 {
                     dataStream.Position = 0;
                     await _storageClient.UploadObjectAsync(
-                        _bucketName,
+                        _uploadSettings.BucketName,
                         remoteFileName,
                         contentType,
                         dataStream
@@ -91,13 +96,13 @@ namespace BlaiseFileUploadAlien.Controller
                 catch (Exception ex)
                 {
                     _logger.LogWarning($"Attempt {attempt} to upload {remoteFileName} failed: {ex.Message}");
-                    if (attempt == maxAttempts)
+                    if (attempt == _uploadSettings.MaxAttempts)
                     {
                         await SaveFailedStreamToDiskAsync(dataStream, remoteFileName);
                         _logger.LogError(ex, "Failed to save upload file to bucket");
                         throw;
                     }
-                    await Task.Delay(delayBetweenRetriesMs);
+                    await Task.Delay(_uploadSettings.DelayBetweenRetriesMs);
                 }
             }
         }
