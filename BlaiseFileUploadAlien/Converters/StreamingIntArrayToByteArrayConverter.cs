@@ -2,7 +2,7 @@
 using System.Text.Json.Serialization;
 using Microsoft.IO;
 
-namespace BlaiseFileUploadAlien;
+namespace BlaiseFileUploadAlien.Converters;
 
 public class StreamingIntArrayToStreamConverter : JsonConverter<Stream>
 {

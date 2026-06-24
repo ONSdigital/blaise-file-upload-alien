@@ -1,4 +1,4 @@
-using BlaiseFileUploadAlien;
+using BlaiseFileUploadAlien.Configuration;
 using Google.Apis.Auth.OAuth2;
 using Google.Cloud.Diagnostics.AspNetCore3;
 using Google.Cloud.Storage.V1;
@@ -47,8 +47,6 @@ if (runningOnGcp)
         options.ServiceName = "BlaiseFileUploadAlien";
     });
 }
-
-// ENV_BLAISE_RAT_BUCKET
 
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();

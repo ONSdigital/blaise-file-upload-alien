@@ -1,4 +1,4 @@
-﻿namespace BlaiseFileUploadAlien;
+﻿namespace BlaiseFileUploadAlien.Configuration;
 
 public class UploadSettings
 {

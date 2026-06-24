@@ -1,4 +1,6 @@
-﻿using BlaiseFileUploadAlien.Controller;
+﻿using BlaiseFileUploadAlien.Configuration;
+using BlaiseFileUploadAlien.Controllers;
+using BlaiseFileUploadAlien.Models;
 using FluentAssertions;
 using Google.Cloud.Storage.V1;
 using Microsoft.AspNetCore.Mvc;
@@ -6,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
 using System.Text.Json;
+using GcsObject = Google.Apis.Storage.v1.Data.Object;
 
 namespace BlaiseFileUploadAlien.Tests;
 
@@ -97,7 +100,7 @@ public class FileControllerTests
         _mockStorageClient
             .Setup(s => s.UploadObjectAsync(
                 It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Stream>()))
-            .ReturnsAsync(new Google.Apis.Storage.v1.Data.Object());
+            .ReturnsAsync(new GcsObject());
 
     private void SetupStorageClientThrows(Exception ex) =>
         _mockStorageClient
@@ -115,8 +118,8 @@ public class FileControllerTests
                 It.IsAny<Stream>())
         ).Returns(() =>
                     ++callCount < successOnAttempt
-                        ? Task.FromException<Google.Apis.Storage.v1.Data.Object>(new Exception("Transient GCS error"))
-                        : Task.FromResult(new Google.Apis.Storage.v1.Data.Object()));
+                        ? Task.FromException<GcsObject>(new Exception("Transient GCS error"))
+                        : Task.FromResult(new GcsObject()));
     }
 
     [Fact]

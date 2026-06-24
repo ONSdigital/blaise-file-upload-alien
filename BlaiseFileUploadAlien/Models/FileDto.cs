@@ -1,7 +1,8 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using BlaiseFileUploadAlien.Converters;
+using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
-namespace BlaiseFileUploadAlien;
+namespace BlaiseFileUploadAlien.Models;
 
 public class FileDto : IDisposable
 {

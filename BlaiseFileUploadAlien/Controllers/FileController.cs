@@ -1,10 +1,11 @@
-﻿using Google.Apis.Auth.OAuth2;
+﻿using BlaiseFileUploadAlien.Configuration;
+using BlaiseFileUploadAlien.Models;
 using Google.Cloud.Storage.V1;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using System.Text.Json;
 
-namespace BlaiseFileUploadAlien.Controller
+namespace BlaiseFileUploadAlien.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
