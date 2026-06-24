@@ -34,19 +34,22 @@ namespace BlaiseFileUploadAlien.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> StoreFile([FromBody] FileDto fileDto)
+        public async Task<IActionResult> StoreFile([FromBody] FileDto fileDto, CancellationToken cancellationToken)
         {
-            if (fileDto?.File == null || fileDto.File.Length == 0)
+            using var safeFileDto = fileDto;
+
+            if (safeFileDto?.File == null || safeFileDto.File.Length == 0)
                 return BadRequest("No file provided or file is empty.");
 
             try
             {
-                _logger.LogInformation("Processing file upload for case {CaseId}", fileDto.Id);
+                _logger.LogInformation("Processing file upload for case {CaseId}", safeFileDto.Id);
 
                 // Validates magic bytes and get file extension
-                if (!TryValidateAndGetExtension(fileDto.File, out string ext))
+                var (isValid, ext) = await TryValidateAndGetExtensionAsync(safeFileDto.File, cancellationToken);
+                if (!isValid)
                 {
-                    _logger.LogWarning("Invalid or corrupted file signature detected for case {CaseId}", fileDto.Id);
+                    _logger.LogWarning("Invalid or corrupted file signature detected for case {CaseId}", safeFileDto.Id);
                     return BadRequest("Invalid file type or corrupted file.");
                 }
 
@@ -57,25 +60,21 @@ namespace BlaiseFileUploadAlien.Controllers
                     .Substring(0, 8);
 
                 // Construct filename
-                var fileName = $"{fileDto.Id}_{fileDto.FileMeta}_{shortId}.{ext}";
+                var fileName = $"{safeFileDto.Id}_{safeFileDto.FileMeta}_{shortId}.{ext}";
 
                 // Save to disk/bucket
-                await UploadFileToStorage(fileDto.File, fileName, ext);
+                await UploadFileToStorage(safeFileDto.File, fileName, ext, cancellationToken);
 
                 return Content(JsonSerializer.Serialize(fileName), "application/json");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to save file for case {CaseId}", fileDto.Id);
+                _logger.LogError(ex, "Failed to save file for case {CaseId}", safeFileDto.Id);
                 return StatusCode(500, "Internal Server Error");
-            }
-            finally
-            {
-                fileDto.Dispose(); 
             }
         }
 
-        private async Task UploadFileToStorage(Stream dataStream, string remoteFileName, string ext)
+        private async Task UploadFileToStorage(Stream dataStream, string remoteFileName, string ext, CancellationToken cancellationToken)
         {
             string contentType = GetContentType(ext);
 
@@ -88,7 +87,8 @@ namespace BlaiseFileUploadAlien.Controllers
                         _uploadSettings.BucketName,
                         remoteFileName,
                         contentType,
-                        dataStream
+                        dataStream,
+                        cancellationToken: cancellationToken
                     );
 
                     _logger.LogInformation($"Successfully uploaded {remoteFileName} on attempt {attempt}.");
@@ -115,7 +115,7 @@ namespace BlaiseFileUploadAlien.Controllers
                 failedStream.Position = 0;
                 var fullPath = Path.Combine(_storagePath, remoteFileName);
 
-                using (var fileStream = new FileStream(fullPath, FileMode.Create, FileAccess.Write, FileShare.None, 4096, useAsync: true))
+                await using (var fileStream = new FileStream(fullPath, FileMode.Create, FileAccess.Write, FileShare.None, 4096, useAsync: true))
                 {
                     await failedStream.CopyToAsync(fileStream);
                 }
@@ -128,24 +128,22 @@ namespace BlaiseFileUploadAlien.Controllers
             }
         }
 
-        private static bool TryValidateAndGetExtension(Stream stream, out string extension)
+        private static async Task<(bool IsValid, string Extension)> TryValidateAndGetExtensionAsync(Stream stream, CancellationToken cancellationToken)
         {
-            extension = string.Empty;
-
-            if (stream == null || stream.Length < 4) return false;
+            if (stream == null || stream.Length < 4) return (false, string.Empty);
 
             byte[] buffer = new byte[4];
-            stream.ReadExactly(buffer, 0, 4);
+            await stream.ReadExactlyAsync(buffer, 0, 4, cancellationToken);
 
             stream.Position = 0;
 
-            if (buffer[0] == 0x89 && buffer[1] == 0x50) { extension = "png"; return true; }
-            if (buffer[0] == 0xFF && buffer[1] == 0xD8) { extension = "jpg"; return true; }
-            if (buffer[0] == 0x47 && buffer[1] == 0x49 && buffer[2] == 0x46) { extension = "gif"; return true; }
-            if (buffer[0] == 0x25 && buffer[1] == 0x50) { extension = "pdf"; return true; }
-            if (buffer[0] == 0x50 && buffer[1] == 0x4B) { extension = "zip"; return true; }
-            
-            return false;
+            if (buffer[0] == 0x89 && buffer[1] == 0x50) return (true, "png");
+            if (buffer[0] == 0xFF && buffer[1] == 0xD8) return (true, "jpg");
+            if (buffer[0] == 0x47 && buffer[1] == 0x49 && buffer[2] == 0x46) return (true, "gif");
+            if (buffer[0] == 0x25 && buffer[1] == 0x50) return (true, "pdf");
+            if (buffer[0] == 0x50 && buffer[1] == 0x4B) return (true, "zip");
+
+            return (false, string.Empty);
         }
 
         private static string GetContentType(string extension)
@@ -154,7 +152,6 @@ namespace BlaiseFileUploadAlien.Controllers
             {
                 "png" => "image/png",
                 "jpg" => "image/jpeg",
-                "jpeg" => "image/jpeg",
                 "gif" => "image/gif",
                 "pdf" => "application/pdf",
                 "zip" => "application/zip",

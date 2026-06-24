@@ -2,6 +2,7 @@
 using BlaiseFileUploadAlien.Controllers;
 using BlaiseFileUploadAlien.Models;
 using FluentAssertions;
+using Google.Apis.Upload; // Added for IUploadProgress
 using Google.Cloud.Storage.V1;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -71,18 +72,22 @@ public class FileControllerTests
             File = fakeStream
         };
 
-        var result = await _sut.StoreFile(fileDto);
+        var result = await _sut.StoreFile(fileDto, CancellationToken.None);
 
         var contentResult = result.Should().BeOfType<ContentResult>().Subject;
         contentResult.ContentType.Should().Be("application/json");
         contentResult.Content.Should().Contain("123_cat_meme");
         contentResult.Content.Should().Contain(".png");
 
+        // Expanded verify to include all 7 parameters required by Moq
         _mockStorageClient.Verify(x => x.UploadObjectAsync(
             It.IsAny<string>(),
             It.IsAny<string>(),
             "image/png",
-            It.IsAny<Stream>()
+            It.IsAny<Stream>(),
+            It.IsAny<UploadObjectOptions>(),
+            It.IsAny<CancellationToken>(),
+            It.IsAny<IProgress<IUploadProgress>>()
         ), Times.Once);
     }
 
@@ -99,23 +104,23 @@ public class FileControllerTests
     private void SetupStorageClientSuccess() =>
         _mockStorageClient
             .Setup(s => s.UploadObjectAsync(
-                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Stream>()))
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Stream>(),
+                It.IsAny<UploadObjectOptions>(), It.IsAny<CancellationToken>(), It.IsAny<IProgress<IUploadProgress>>()))
             .ReturnsAsync(new GcsObject());
 
     private void SetupStorageClientThrows(Exception ex) =>
         _mockStorageClient
             .Setup(s => s.UploadObjectAsync(
-                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Stream>()))
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Stream>(),
+                It.IsAny<UploadObjectOptions>(), It.IsAny<CancellationToken>(), It.IsAny<IProgress<IUploadProgress>>()))
             .ThrowsAsync(ex);
 
     private void SetupStorageClientSucceedsOnAttempt(int successOnAttempt)
     {
         var callCount = 0;
         _mockStorageClient.Setup(s => s.UploadObjectAsync(
-                It.IsAny<string>(), 
-                It.IsAny<string>(), 
-                It.IsAny<string>(), 
-                It.IsAny<Stream>())
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Stream>(),
+                It.IsAny<UploadObjectOptions>(), It.IsAny<CancellationToken>(), It.IsAny<IProgress<IUploadProgress>>())
         ).Returns(() =>
                     ++callCount < successOnAttempt
                         ? Task.FromException<GcsObject>(new Exception("Transient GCS error"))
@@ -125,7 +130,7 @@ public class FileControllerTests
     [Fact]
     public async Task StoreFile_WhenFileDtoIsNull_ReturnsBadRequest()
     {
-        var result = await _sut.StoreFile(null);
+        var result = await _sut.StoreFile(null, CancellationToken.None);
 
         var bad = Assert.IsType<BadRequestObjectResult>(result);
         Assert.Equal("No file provided or file is empty.", bad.Value);
@@ -136,7 +141,7 @@ public class FileControllerTests
     {
         var dto = new FileDto { File = null, Id = 1, FileMeta = "meta" };
 
-        var result = await _sut.StoreFile(dto);
+        var result = await _sut.StoreFile(dto, CancellationToken.None);
 
         var bad = Assert.IsType<BadRequestObjectResult>(result);
         Assert.Equal("No file provided or file is empty.", bad.Value);
@@ -147,7 +152,7 @@ public class FileControllerTests
     {
         var dto = new FileDto { File = new MemoryStream(Array.Empty<byte>()), Id = 1, FileMeta = "meta" };
 
-        var result = await _sut.StoreFile(dto);
+        var result = await _sut.StoreFile(dto, CancellationToken.None);
 
         var bad = Assert.IsType<BadRequestObjectResult>(result);
         Assert.Equal("No file provided or file is empty.", bad.Value);
@@ -158,7 +163,7 @@ public class FileControllerTests
     {
         var dto = new FileDto { File = new MemoryStream(new byte[] { 0x89, 0x50 }), Id = 1, FileMeta = "meta" };
 
-        var result = await _sut.StoreFile(dto);
+        var result = await _sut.StoreFile(dto, CancellationToken.None);
 
         var bad = Assert.IsType<BadRequestObjectResult>(result);
         Assert.Equal("Invalid file type or corrupted file.", bad.Value);
@@ -167,7 +172,7 @@ public class FileControllerTests
     [Fact]
     public async Task StoreFile_WhenFileHasUnrecognisedSignature_ReturnsBadRequest()
     {
-        var result = await _sut.StoreFile(BuildFileDto(BadHeader));
+        var result = await _sut.StoreFile(BuildFileDto(BadHeader), CancellationToken.None);
 
         var bad = Assert.IsType<BadRequestObjectResult>(result);
         Assert.Equal("Invalid file type or corrupted file.", bad.Value);
@@ -179,7 +184,7 @@ public class FileControllerTests
     {
         SetupStorageClientSuccess();
 
-        var result = await _sut.StoreFile(BuildFileDto(header));
+        var result = await _sut.StoreFile(BuildFileDto(header), CancellationToken.None);
 
         Assert.IsNotType<BadRequestObjectResult>(result);
     }
@@ -190,7 +195,7 @@ public class FileControllerTests
     {
         SetupStorageClientSuccess();
 
-        var result = await _sut.StoreFile(BuildFileDto(header));
+        var result = await _sut.StoreFile(BuildFileDto(header), CancellationToken.None);
 
         Assert.IsType<ContentResult>(result);
     }
@@ -200,7 +205,7 @@ public class FileControllerTests
     {
         SetupStorageClientSuccess();
 
-        var result = await _sut.StoreFile(BuildFileDto(PngHeader));
+        var result = await _sut.StoreFile(BuildFileDto(PngHeader), CancellationToken.None);
 
         Assert.Equal("application/json", Assert.IsType<ContentResult>(result).ContentType);
     }
@@ -211,7 +216,7 @@ public class FileControllerTests
     {
         SetupStorageClientSuccess();
 
-        var result = await _sut.StoreFile(BuildFileDto(header));
+        var result = await _sut.StoreFile(BuildFileDto(header), CancellationToken.None);
 
         var fileName = JsonSerializer.Deserialize<string>(Assert.IsType<ContentResult>(result).Content!);
         Assert.EndsWith($".{extension}", fileName);
@@ -222,7 +227,7 @@ public class FileControllerTests
     {
         SetupStorageClientSuccess();
 
-        var result = await _sut.StoreFile(BuildFileDto(PngHeader, id: 99));
+        var result = await _sut.StoreFile(BuildFileDto(PngHeader, id: 99), CancellationToken.None);
 
         var fileName = JsonSerializer.Deserialize<string>(Assert.IsType<ContentResult>(result).Content!);
         Assert.Contains("99", fileName);
@@ -233,7 +238,7 @@ public class FileControllerTests
     {
         SetupStorageClientSuccess();
 
-        var result = await _sut.StoreFile(BuildFileDto(PngHeader, fileMeta: "more_cat_memes"));
+        var result = await _sut.StoreFile(BuildFileDto(PngHeader, fileMeta: "more_cat_memes"), CancellationToken.None);
 
         var fileName = JsonSerializer.Deserialize<string>(Assert.IsType<ContentResult>(result).Content!);
         Assert.Contains("more_cat_memes", fileName);
@@ -244,7 +249,7 @@ public class FileControllerTests
     {
         SetupStorageClientSuccess();
 
-        var result = await _sut.StoreFile(BuildFileDto(PngHeader, id: 1, fileMeta: "garfield"));
+        var result = await _sut.StoreFile(BuildFileDto(PngHeader, id: 1, fileMeta: "garfield"), CancellationToken.None);
 
         var fileName = JsonSerializer.Deserialize<string>(Assert.IsType<ContentResult>(result).Content!);
         var nameNoExt = Path.GetFileNameWithoutExtension(fileName)!;
@@ -256,10 +261,11 @@ public class FileControllerTests
     public async Task StoreFile_WhenUploadSucceeds_CallsStorageClientExactlyOnce()
     {
         SetupStorageClientSuccess();
-        await _sut.StoreFile(BuildFileDto(PngHeader));
+        await _sut.StoreFile(BuildFileDto(PngHeader), CancellationToken.None);
 
         _mockStorageClient.Verify(s => s.UploadObjectAsync(
-            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Stream>()),
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Stream>(),
+            It.IsAny<UploadObjectOptions>(), It.IsAny<CancellationToken>(), It.IsAny<IProgress<IUploadProgress>>()),
             Times.Once);
     }
 
@@ -267,11 +273,11 @@ public class FileControllerTests
     public async Task StoreFile_WhenUploadSucceeds_UploadsToConfiguredBucket()
     {
         SetupStorageClientSuccess();
-        await _sut.StoreFile(BuildFileDto(PngHeader));
+        await _sut.StoreFile(BuildFileDto(PngHeader), CancellationToken.None);
 
         _mockStorageClient.Verify(s => s.UploadObjectAsync(
-            "dummy_bucket",
-            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Stream>()),
+            "dummy_bucket", It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Stream>(),
+            It.IsAny<UploadObjectOptions>(), It.IsAny<CancellationToken>(), It.IsAny<IProgress<IUploadProgress>>()),
             Times.Once);
     }
 
@@ -280,12 +286,11 @@ public class FileControllerTests
     public async Task StoreFile_WhenValidFileType_UploadsWithCorrectContentType(string expectedContentType, byte[] header)
     {
         SetupStorageClientSuccess();
-        await _sut.StoreFile(BuildFileDto(header));
+        await _sut.StoreFile(BuildFileDto(header), CancellationToken.None);
 
         _mockStorageClient.Verify(s => s.UploadObjectAsync(
-            It.IsAny<string>(), It.IsAny<string>(),
-            expectedContentType,
-            It.IsAny<Stream>()),
+            It.IsAny<string>(), It.IsAny<string>(), expectedContentType, It.IsAny<Stream>(),
+            It.IsAny<UploadObjectOptions>(), It.IsAny<CancellationToken>(), It.IsAny<IProgress<IUploadProgress>>()),
             Times.Once);
     }
 
@@ -294,7 +299,7 @@ public class FileControllerTests
     {
         SetupStorageClientThrows(new Exception("GCS unavailable"));
 
-        var result = await _sut.StoreFile(BuildFileDto(PngHeader));
+        var result = await _sut.StoreFile(BuildFileDto(PngHeader), CancellationToken.None);
 
         var status = Assert.IsType<ObjectResult>(result);
         Assert.Equal(500, status.StatusCode);
@@ -305,10 +310,11 @@ public class FileControllerTests
     public async Task StoreFile_WhenAllUploadAttemptsFail_RetriesExactlyThreeTimes()
     {
         SetupStorageClientThrows(new Exception("GCS unavailable"));
-        await _sut.StoreFile(BuildFileDto(PngHeader));
+        await _sut.StoreFile(BuildFileDto(PngHeader), CancellationToken.None);
 
         _mockStorageClient.Verify(s => s.UploadObjectAsync(
-            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Stream>()),
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Stream>(),
+            It.IsAny<UploadObjectOptions>(), It.IsAny<CancellationToken>(), It.IsAny<IProgress<IUploadProgress>>()),
             Times.Exactly(3));
     }
 
@@ -317,7 +323,7 @@ public class FileControllerTests
     {
         SetupStorageClientSucceedsOnAttempt(successOnAttempt: 2);
 
-        var result = await _sut.StoreFile(BuildFileDto(PngHeader));
+        var result = await _sut.StoreFile(BuildFileDto(PngHeader), CancellationToken.None);
 
         Assert.IsType<ContentResult>(result);
     }
@@ -326,13 +332,11 @@ public class FileControllerTests
     public async Task StoreFile_WhenUploadSucceedsOnSecondAttempt_CallsStorageClientTwice()
     {
         SetupStorageClientSucceedsOnAttempt(successOnAttempt: 2);
-        await _sut.StoreFile(BuildFileDto(PngHeader));
+        await _sut.StoreFile(BuildFileDto(PngHeader), CancellationToken.None);
 
         _mockStorageClient.Verify(s => s.UploadObjectAsync(
-            It.IsAny<string>(), 
-            It.IsAny<string>(), 
-            It.IsAny<string>(), 
-            It.IsAny<Stream>()),
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Stream>(),
+            It.IsAny<UploadObjectOptions>(), It.IsAny<CancellationToken>(), It.IsAny<IProgress<IUploadProgress>>()),
             Times.Exactly(2));
     }
 
@@ -354,7 +358,7 @@ public class FileControllerTests
 
         try
         {
-            await sut.StoreFile(BuildFileDto(PngHeader));
+            await sut.StoreFile(BuildFileDto(PngHeader), CancellationToken.None);
             var savedFiles = Directory.GetFiles(tempDir);
             Assert.Single(savedFiles);
             Assert.EndsWith(".png", savedFiles[0]);
@@ -373,7 +377,7 @@ public class FileControllerTests
     {
         SetupStorageClientThrows(new Exception("GCS unavailable"));
 
-        await _sut.StoreFile(BuildFileDto(PngHeader));
+        await _sut.StoreFile(BuildFileDto(PngHeader), CancellationToken.None);
 
         _mockLogger.Verify(
             logger => logger.Log(
@@ -384,5 +388,4 @@ public class FileControllerTests
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
-
 }
