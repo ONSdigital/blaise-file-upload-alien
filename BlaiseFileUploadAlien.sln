@@ -1,11 +1,16 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
-VisualStudioVersion = 18.7.11903.348 stable
+VisualStudioVersion = 18.7.11903.348
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BlaiseFileUploadAlien", "BlaiseFileUploadAlien\BlaiseFileUploadAlien.csproj", "{D5D532D4-F24F-C5B9-EEAE-85217D77584D}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BlaiseFileUploadAlien.Tests", "BlaiseFileUploadAlien.Tests\BlaiseFileUploadAlien.Tests.csproj", "{08C9950B-4A2C-4B6D-ABA2-25D4348D64D7}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{7C5B97B0-4E2B-4A8B-8BA8-53D79A6C6778}"
+	ProjectSection(SolutionItems) = preProject
+		README.md = README.md
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
