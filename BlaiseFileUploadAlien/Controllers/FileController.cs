@@ -103,7 +103,7 @@ namespace BlaiseFileUploadAlien.Controllers
                         _logger.LogError(ex, "Failed to save upload file to bucket");
                         throw;
                     }
-                    await Task.Delay(_uploadSettings.DelayBetweenRetriesMs);
+                    await Task.Delay(_uploadSettings.DelayBetweenRetriesMs, cancellationToken);
                 }
             }
         }
