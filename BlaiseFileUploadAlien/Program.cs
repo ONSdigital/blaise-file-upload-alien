@@ -1,23 +1,35 @@
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
+using BlaiseFileUploadAlien.Configuration;
+using Google.Apis.Auth.OAuth2;
 using Google.Cloud.Diagnostics.AspNetCore3;
-
-
-using System.Net.Http;
-using System.Threading.Tasks;
+using Google.Cloud.Storage.V1;
 
 var builder = WebApplication.CreateBuilder(args);
 
-bool IsRunningOnGcpVm()
+// Use Dependency Injection to only create one storage client
+builder.Services.AddSingleton<StorageClient>(provider =>
+{
+    GoogleCredential defaultCredential = GoogleCredential.GetApplicationDefault();
+    return StorageClient.Create(defaultCredential);
+});
+
+builder.Services.Configure<UploadSettings>(options =>
+{
+    builder.Configuration.GetSection("UploadSettings").Bind(options);
+    var envBucket = Environment.GetEnvironmentVariable("ENV_BLAISE_RAT_BUCKET");
+    if (!string.IsNullOrEmpty(envBucket))
+    {
+        options.BucketName = envBucket;
+    }
+});
+
+async Task<bool> IsRunningOnGcpVm()
 {
     try
     {
         using var client = new HttpClient();
         client.Timeout = TimeSpan.FromMilliseconds(300);
         client.DefaultRequestHeaders.Add("Metadata-Flavor", "Google");
-        var response = client.GetAsync("http://metadata.google.internal").Result;
+        var response = await client.GetAsync("http://metadata.google.internal");
         return response.IsSuccessStatusCode;
     }
     catch
@@ -26,7 +38,7 @@ bool IsRunningOnGcpVm()
     }
 }
 
-var runningOnGcp = IsRunningOnGcpVm();
+var runningOnGcp = await IsRunningOnGcpVm();
 
 if (runningOnGcp)
 {
@@ -49,7 +61,13 @@ if (runningOnGcp)
 }
 
 var port = "5123";
-builder.WebHost.UseUrls($"http://localhost:{port}");
+builder.WebHost.UseUrls($"http://127.0.0.1:{port}");
+
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = 60 * 1024 * 1024; // 60 MB Max Limit
+});
+
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();

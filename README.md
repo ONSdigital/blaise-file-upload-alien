@@ -2,7 +2,7 @@
 
 ## Overview
 
-Blaise File Upload Alien is a minimal ASP.NET Core Web API (using .NET 8) for uploading files. It is designed as a **proof of concept** to demonstrate file upload handling for Blaise questionnaires. The API works both locally (as a console app) and as a Windows service on a Google Cloud Platform (GCP) VM. It exposes a single endpoint for file uploads and stores files on disk with metadata and unique IDs. Logging is automatically configured for both local development and GCP environments.
+Blaise File Upload Alien is a minimal ASP.NET Core Web API (using .NET 10) for uploading files. It is designed as a **proof of concept** to demonstrate file upload handling for Blaise questionnaires. The API works both locally (as a console app) and as a Windows service on a Google Cloud Platform (GCP) VM. It exposes a single endpoint for file uploads and stores files on disk with metadata and unique IDs. Logging is automatically configured for both local development and GCP environments.
 
 > **Note:** Files are currently stored on the local disk, but in a production scenario, files could be stored in a cloud storage bucket (e.g., Google Cloud Storage).
 
@@ -21,29 +21,54 @@ Blaise File Upload Alien is a minimal ASP.NET Core Web API (using .NET 8) for up
 
 ## Requirements
 
-- **.NET 8 SDK** is required to build and publish the application. [Download .NET 8 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/8.0)
-- **.NET Hosting Bundle** is required on the target machine to run the published app as a Windows service. [Download Hosting Bundle](https://dotnet.microsoft.com/en-us/download/dotnet/8.0)
+- **.NET 10 SDK** is required to build and publish the application. [Download .NET 10 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)
+- **.NET Hosting Bundle** is required on the target machine to run the published app as a Windows service. [Download Hosting Bundle](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)
 
 ## Running Locally
 
-1. Restore and publish the application (requires .NET 8 SDK):
+1. Restore and publish the application (requires .NET 10 SDK):
     ```
     dotnet restore
     dotnet publish -c Release -r win-x64 --self-contained false -o \BlaiseServices\BlaiseFileUploadAlien\
     ```
 
-2. Run the application as a console app (requires .NET 8 Hosting Bundle installed):
+2. To upload to a sandbox GCP project, ensure you specify it in Properties/launchSettings.json (e.g., `ons-blaise-v2-dev-<sandbox>-rat`).
+
+    ```
+    {
+      "profiles": {
+        "BlaiseFileUploadAlien": {
+          "commandName": "Project",
+          "launchBrowser": true,
+          "environmentVariables": {
+            "ASPNETCORE_ENVIRONMENT": "Development",
+            "ENV_BLAISE_RAT_BUCKET": "ons-blaise-v2-dev-<sandbox>-rat"
+          },
+          "applicationUrl": "https://localhost:55163;http://localhost:55164"
+        }
+      }
+    }
+    ```
+
+3. Authenticate your local machine
+
+    ```
+    gcloud config set project ons-blaise-v2-dev-<sandbox>
+    gcloud auth application-default login
+    ```
+
+4. Run the application as a console app (requires .NET 10 Hosting Bundle installed):
     ```
     cd \BlaiseServices\BlaiseFileUploadAlien\
     .\BlaiseFileUploadAlien.exe
     ```
 
-3. Access the API at [http://localhost:5123/swagger](http://localhost:5123/swagger) for documentation and testing.
+5. Access the API at [http://localhost:5123/swagger](http://localhost:5123/swagger) for documentation and testing.
 
 
 ## Running on a GCP VM (as a Windows Service)
 
-1. Publish and copy the output to your GCP VM (requires .NET 8 SDK for publishing, .NET 8 Hosting Bundle for running).
+1. Publish and copy the output to your GCP VM (requires .NET 10 SDK for publishing, .NET 10 Hosting Bundle for running).
 
 2. Create and start the Windows service:
     ```
