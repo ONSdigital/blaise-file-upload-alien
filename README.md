@@ -32,6 +32,24 @@ Blaise File Upload Alien is a minimal ASP.NET Core Web API (using .NET 10) for u
     dotnet publish -c Release -r win-x64 --self-contained false -o \BlaiseServices\BlaiseFileUploadAlien\
     ```
 
+2. To upload to a sandbox GCP project, ensure you specify it in Properties/launchSettings.json (e.g., `ons-blaise-v2-dev-<sandbox>-rat`).
+
+    ```
+    {
+      "profiles": {
+        "BlaiseFileUploadAlien": {
+          "commandName": "Project",
+          "launchBrowser": true,
+          "environmentVariables": {
+            "ASPNETCORE_ENVIRONMENT": "Development",
+            "ENV_BLAISE_RAT_BUCKET": "ons-blaise-v2-dev-<sandbox>-rat"
+          },
+          "applicationUrl": "https://localhost:55163;http://localhost:55164"
+        }
+      }
+    }
+    ```
+
 2. Authenticate your local machine
 
     ```
