@@ -47,19 +47,19 @@ stages:
             inputs:
               solution: '$(solution)'
               platform: '$(buildPlatform)'
-              confuguration: '$(buildConfiguration)'
+              configuration: '$(buildConfiguration)'
 
           - task: PublishBuildArtifacts@1
             displayName: 'Publish Artifact: BlaiseFileUploadAlien'
             inputs:
               PathtoPublish: '$(Build.SourcesDirectory)/BlaiseFileUploadAlien/bin/Release/net10.0/win-x64'
               ArtifactName: 'BlaiseFileUploadAlien'
-              publichLocation: 'Container'
+              publishLocation: 'Container'
 
 
   - stage: DeployBlaiseFileUploadAlien_${{parameters.Environment}}
     displayName: Deploy Blaise File Upload Alien (${{parameters.Environment}})
-    dependsOn: Build
+    dependsOn: BuildBlaiseFileUploadAlien_${{parameters.Environment}}
     jobs:
       - deployment: DeployBlaiseFileUploadAlien
         displayName: Deploy Blaise File Upload Alien
@@ -88,10 +88,14 @@ stages:
                     }
                   displayName: 'Pre-Deployment: Stop Windows Service'
 
-                - template: /templates/copy_files.yml
-                  parameters:
-                    TargetFolder: c:\BlaiseServices\BlaiseFileUploadAlien
-                    SourceFolder: $(Pipeline.Workspace)/BlaiseFileUploadAlien
+                - task: CopyFiles@2
+                  displayName: 'Copy files'
+                  inputs:
+                    SourceFolder: '$(Pipeline.Workspace)/BlaiseFileUploadAlien'
+                    Contents: '**'
+                    TargetFolder: 'c:\BlaiseServices\BlaiseFileUploadAlien'
+                    CleanTargetFolder: true
+                    OverWrite: true
 
                 - powershell: |
                     $ServiceName = "BlaiseFileUploadAlien"
