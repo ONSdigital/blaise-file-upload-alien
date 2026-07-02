@@ -62,7 +62,7 @@ stages:
             inputs:
               command: 'publish'
               publishWebProjects: false
-              projects: '$(Pipeline.Workspace)/BlaiseFileUploadAlien//*.csproj'
+              projects: '**/BlaiseFileUploadAlien.csproj'
               arguments: '-c Release -r win-x64 --self-contained false -o $(Build.ArtifactStagingDirectory)/BlaiseFileUploadAlien'
               zipAfterPublish: false
 
