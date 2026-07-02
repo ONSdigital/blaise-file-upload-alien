@@ -48,10 +48,25 @@ stages:
               platform: '$(buildPlatform)'
               configuration: '$(buildConfiguration)'
 
+          - task: DotNetCoreCLI@2
+            displayName: 'Restore NuGet Packages'
+            inputs:
+              command: 'restore'
+              projects: '$(Pipeline.Workspace)/BlaiseFileUploadAlien/*.csproj'
+
+          - task: DotNetCoreCLI@2
+            displayName: 'Dotnet Publish (win-x64)'
+            inputs:
+              command: 'publish'
+              publishWebProjects: false
+              projects: '$(Pipeline.Workspace)/BlaiseFileUploadAlien//*.csproj'
+              arguments: '-c Release -r win-x64 --self-contained false -o $(Build.ArtifactStagingDirectory)/BlaiseFileUploadAlien'
+              zipAfterPublish: false
+
           - task: PublishBuildArtifacts@1
             displayName: 'Publish Artifact: BlaiseFileUploadAlien'
             inputs:
-              PathtoPublish: '$(Build.SourcesDirectory)/BlaiseFileUploadAlien/bin/Release/net10.0/win-x64'
+              PathtoPublish: '$(Build.ArtifactStagingDirectory)/BlaiseFileUploadAlien'
               ArtifactName: 'BlaiseFileUploadAlien'
               publishLocation: 'Container'
 
