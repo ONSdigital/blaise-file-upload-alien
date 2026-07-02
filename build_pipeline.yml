@@ -49,10 +49,13 @@ stages:
               configuration: '$(buildConfiguration)'
 
           - task: DotNetCoreCLI@2
-            displayName: 'Restore NuGet Packages'
+            displayName: Run unit tests
             inputs:
-              command: 'restore'
-              projects: '$(Pipeline.Workspace)/BlaiseFileUploadAlien/*.csproj'
+              command: test
+              projects: |
+                **/*[Tt]est*.csproj
+                !**/*Behaviour.csproj
+              arguments: --configuration $(buildConfiguration) --no-build
 
           - task: DotNetCoreCLI@2
             displayName: 'Dotnet Publish (win-x64)'
