@@ -20,7 +20,6 @@ variables:
   - name: buildConfiguration
     value: 'Release'
 
-
 stages:
 
   - stage: BuildBlaiseFileUploadAlien_${{parameters.Environment}}
@@ -34,25 +33,17 @@ stages:
           - checkout: self
 
           - task: UseDotNet@2
-            displayName: Install .NET
+            displayName: Install .NET 10
             inputs:
               packageType: sdk
               version: 10.x
 
-          - task: NuGetToolInstaller@1
-            displayName: 'Install NuGet Tools'
-
-          - task: NuGetCommand@2
-            displayName: 'Restore NuGet Packages'
+          - task: DotNetCoreCLI@2
+            displayName: 'Restore and Build Solution'
             inputs:
-              restoreSolution: '$(solution)'
-
-          - task: VSBuild@1
-            displayName: 'Build Solution'
-            inputs:
-              solution: '$(solution)'
-              platform: '$(buildPlatform)'
-              configuration: '$(buildConfiguration)'
+              command: 'build'
+              projects: '$(solution)'
+              arguments: '--configuration $(buildConfiguration)'
 
           - task: DotNetCoreCLI@2
             displayName: Run unit tests
@@ -69,7 +60,7 @@ stages:
               command: 'publish'
               publishWebProjects: false
               projects: '**/BlaiseFileUploadAlien.csproj'
-              arguments: '-c Release -r win-x64 --self-contained false -o $(Build.ArtifactStagingDirectory)/BlaiseFileUploadAlien'
+              arguments: '-c $(buildConfiguration) -r win-x64 --self-contained false -o $(Build.ArtifactStagingDirectory)/BlaiseFileUploadAlien'
               zipAfterPublish: false
 
           - task: PublishBuildArtifacts@1
@@ -79,42 +70,56 @@ stages:
               ArtifactName: 'BlaiseFileUploadAlien'
               publishLocation: 'Container'
 
-          - download: current
-            artifact: BlaiseFileUploadAlien
-            displayName: 'Download Build Artifact'
+  - stage: DeployBlaiseFileUploadAlien_${{parameters.Environment}}
+    displayName: Deploy Blaise File Upload Alien (${{parameters.Environment}})
+    dependsOn: BuildBlaiseFileUploadAlien_${{parameters.Environment}}
+    jobs:
+      - deployment: DeployBlaiseFileUploadAlien
+        displayName: Deploy to Target VM
+        variables:
+          ENV_BLAISE_SERVER_BINDING: $(ENV_BLAISE_INTERNAL_SERVER_BINDING)
+        
+        environment:
+          name: ${{parameters.Environment}}
+          resourceType: virtualMachine
+          tags: blaise-file-upload-alien
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: current
+                  artifact: BlaiseFileUploadAlien
+                  displayName: 'Download Build Artifact'
 
-          - powershell: |
-              $ServiceName = "BlaiseFileUploadAlien"
-              if (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) {
-                  Write-Host "Service $ServiceName exists. Stopping to release file locks..."
-                  Stop-Service -Name $ServiceName -Force
-                  Start-Sleep -Seconds 5 # Give it time to fully spin down
-              } else {
-                  Write-Host "Service $ServiceName does not exist yet. Proceeding..."
-              }
-            displayName: 'Pre-Deployment: Stop Windows Service'
+                - powershell: |
+                    $ServiceName = "BlaiseFileUploadAlien"
+                    if (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) {
+                        Write-Host "Service $ServiceName exists. Stopping to release file locks..."
+                        Stop-Service -Name $ServiceName -Force
+                        Start-Sleep -Seconds 5
+                    } else {
+                        Write-Host "Service $ServiceName does not exist yet. Proceeding..."
+                    }
+                  displayName: 'Pre-Deployment: Stop Windows Service'
 
-          - task: CopyFiles@2
-            displayName: 'Copy files'
-            inputs:
-              SourceFolder: '$(Pipeline.Workspace)/BlaiseFileUploadAlien'
-              Contents: '**'
-              TargetFolder: 'c:\BlaiseServices\BlaiseFileUploadAlien'
-              CleanTargetFolder: true
-              OverWrite: true
+                - task: CopyFiles@2
+                  displayName: 'Copy files to target directory'
+                  inputs:
+                    SourceFolder: '$(Pipeline.Workspace)/BlaiseFileUploadAlien'
+                    Contents: '**'
+                    TargetFolder: 'c:\BlaiseServices\BlaiseFileUploadAlien'
+                    CleanTargetFolder: true
+                    OverWrite: true
 
-          - powershell: |
-              $ServiceName = "BlaiseFileUploadAlien"
-              $ServicePath = "c:\BlaiseServices\BlaiseFileUploadAlien\BlaiseFileUploadAlien.exe"
+                - powershell: |
+                    $ServiceName = "BlaiseFileUploadAlien"
+                    $ServicePath = "c:\BlaiseServices\BlaiseFileUploadAlien\BlaiseFileUploadAlien.exe"
 
-              # Create service if it doesn't exist
-              if (-not (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue)) {
-                  Write-Host "Creating service $ServiceName..."
-                  New-Service -Name $ServiceName -BinaryPathName $ServicePath -DisplayName "Blaise File Upload Alien" -StartupType Automatic
-              }
+                    if (-not (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue)) {
+                        Write-Host "Creating service $ServiceName..."
+                        New-Service -Name $ServiceName -BinaryPathName $ServicePath -DisplayName "Blaise File Upload Alien" -StartupType Automatic
+                    }
 
-              Write-Host "Starting service $ServiceName..."
-              Start-Service -Name $ServiceName
-            displayName: 'Post-Deployment: Create and Start Windows Service'
-
-
+                    Write-Host "Starting service $ServiceName..."
+                    Start-Service -Name $ServiceName
+                  displayName: 'Post-Deployment: Create and Start Windows Service'
