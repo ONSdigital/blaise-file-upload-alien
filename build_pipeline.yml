@@ -13,7 +13,6 @@ pr: none
 
 variables:
   - group: ${{parameters.VarGroup}}
-  - template: /templates/variables.yml
   - name: solution
     value: '**/*.sln'
   - name: buildPlatform
