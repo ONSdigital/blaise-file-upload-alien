@@ -1,18 +1,10 @@
 ---
-parameters:
-  - name: VarGroup
-    displayName: Variable group
-  - name: Environment
-    displayName: Environment to use
-  - name: DeployBranch
-    displayName: Branch to use
-    default: main
-
 trigger: none
-pr: none
 
+pool:
+  vmImage: windows-latest
+  
 variables:
-  - group: ${{parameters.VarGroup}}
   - name: solution
     value: '**/*.sln'
   - name: buildPlatform
@@ -21,9 +13,8 @@ variables:
     value: 'Release'
 
 stages:
-
-  - stage: BuildBlaiseFileUploadAlien_${{parameters.Environment}}
-    displayName: Build Blaise File Upload Alien (${{parameters.Environment}})
+  - stage: BuildBlaiseFileUploadAlien
+    displayName: Build Blaise File Upload Alien
     jobs:
       - job: BuildApp
         displayName: Build and Publish
@@ -70,9 +61,9 @@ stages:
               ArtifactName: 'BlaiseFileUploadAlien'
               publishLocation: 'Container'
 
-  - stage: DeployBlaiseFileUploadAlien_${{parameters.Environment}}
-    displayName: Deploy Blaise File Upload Alien (${{parameters.Environment}})
-    dependsOn: BuildBlaiseFileUploadAlien_${{parameters.Environment}}
+  - stage: DeployBlaiseFileUploadAlien
+    displayName: Deploy Blaise File Upload Alien
+    dependsOn: BuildBlaiseFileUploadAlien
     jobs:
       - deployment: DeployBlaiseFileUploadAlien
         displayName: Deploy to Target VM
