@@ -4,7 +4,7 @@
 
 Blaise File Upload Alien is a minimal ASP.NET Core Web API (using .NET 10) for uploading files. It is designed as a **proof of concept** to demonstrate file upload handling for Blaise questionnaires. The API works both locally (as a console app) and as a Windows service on a Google Cloud Platform (GCP) VM. It exposes a single endpoint for file uploads and stores files on disk with metadata and unique IDs. Logging is automatically configured for both local development and GCP environments.
 
-> **Note:** Files are currently stored on the local disk, but in a production scenario, files could be stored in a cloud storage bucket (e.g., Google Cloud Storage).
+> **Note:** Files are uploaded to the RAT cloud storage bucket. Currently work is underway to add a pipeline
 
 > **Test Questionnaire:** A `test-questionnaire` folder is included, containing a sample questionnaire that will upload a file to the endpoint of this application/service.
 
