@@ -249,11 +249,14 @@ public class FileControllerTests
     {
         SetupStorageClientSuccess();
 
-        var result = await _sut.StoreFile(BuildFileDto(PngHeader, id: 1, fileMeta: "garfield"), CancellationToken.None);
+        var id = 1;
+        var fileMeta = "garfield";
+
+        var result = await _sut.StoreFile(BuildFileDto(PngHeader, id: id, fileMeta: fileMeta), CancellationToken.None);
 
         var fileName = JsonSerializer.Deserialize<string>(Assert.IsType<ContentResult>(result).Content!);
         var nameNoExt = Path.GetFileNameWithoutExtension(fileName)!;
-        var shortId = nameNoExt[(nameNoExt.LastIndexOf('_') + 1)..];
+        var shortId = nameNoExt.Split($"{id}_{fileMeta}_")[1];
         Assert.Equal(8, shortId.Length);
     }
 
