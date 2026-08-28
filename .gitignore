@@ -11,3 +11,4 @@ obj/
 *.usersettings
 *.msg.txt
 /BlaiseFileUploadAlien/Properties/launchSettings.json
+agents.md

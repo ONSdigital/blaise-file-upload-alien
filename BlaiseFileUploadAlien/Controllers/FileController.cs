@@ -1,5 +1,6 @@
 ﻿using BlaiseFileUploadAlien.Configuration;
 using BlaiseFileUploadAlien.Models;
+using BlaiseFileUploadAlien.Services;
 using Google.Cloud.Storage.V1;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
@@ -13,6 +14,7 @@ namespace BlaiseFileUploadAlien.Controllers
     {
         private readonly ILogger<FileController> _logger;
         private readonly StorageClient _storageClient;
+        private readonly IFileDeletionService _fileDeletionService;
         private readonly UploadSettings _uploadSettings;
         private readonly string _storagePath;
 
@@ -20,10 +22,12 @@ namespace BlaiseFileUploadAlien.Controllers
         public FileController(
             ILogger<FileController> logger, 
             StorageClient storageClient,
-            IOptions<UploadSettings> uploadOptions)
+            IOptions<UploadSettings> uploadOptions,
+            IFileDeletionService fileDeletionService)
         {
             _logger = logger;
             _storageClient = storageClient;
+            _fileDeletionService = fileDeletionService;
             _uploadSettings = uploadOptions.Value;
             _storagePath = _uploadSettings.StoragePath;
 
@@ -31,6 +35,24 @@ namespace BlaiseFileUploadAlien.Controllers
             {
                 Directory.CreateDirectory(_storagePath);
             }
+        }
+
+        [HttpDelete("{filename}")]
+        public async Task<IActionResult> DeleteFile([FromRoute] string filename, CancellationToken cancellationToken)
+        {
+            if (!IsValidFileName(filename))
+            {
+                return BadRequest("Filename is invalid or missing.");
+            }
+
+            var deleteResult = await _fileDeletionService.DeleteFileAsync(filename, cancellationToken);
+
+            return deleteResult switch
+            {
+                DeleteFileResult.Deleted => NoContent(),
+                DeleteFileResult.NotFound => NotFound("File not found."),
+                _ => StatusCode(500, "Internal Server Error")
+            };
         }
 
         [HttpPost]
@@ -157,6 +179,24 @@ namespace BlaiseFileUploadAlien.Controllers
                 "zip" => "application/zip",
                 _ => "application/octet-stream"
             };
+        }
+
+        private static bool IsValidFileName(string? filename)
+        {
+            if (string.IsNullOrWhiteSpace(filename))
+            {
+                return false;
+            }
+
+            if (filename.Contains("../", StringComparison.Ordinal) ||
+                filename.Contains("..\\", StringComparison.Ordinal) ||
+                filename.Contains('/', StringComparison.Ordinal) ||
+                filename.Contains('\\', StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            return Path.GetFileName(filename) == filename;
         }
     }
 }

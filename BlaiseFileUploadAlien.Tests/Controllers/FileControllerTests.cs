@@ -1,6 +1,7 @@
 ﻿using BlaiseFileUploadAlien.Configuration;
 using BlaiseFileUploadAlien.Controllers;
 using BlaiseFileUploadAlien.Models;
+using BlaiseFileUploadAlien.Services;
 using FluentAssertions;
 using Google.Apis.Upload; // Added for IUploadProgress
 using Google.Cloud.Storage.V1;
@@ -17,6 +18,7 @@ public class FileControllerTests
 {
     private readonly Mock<ILogger<FileController>> _mockLogger;
     private readonly Mock<StorageClient> _mockStorageClient;
+    private readonly Mock<IFileDeletionService> _mockFileDeletionService;
     private readonly FileController _sut;
 
     private static readonly byte[] PngHeader = { 0x89, 0x50, 0x4E, 0x47 };
@@ -48,6 +50,7 @@ public class FileControllerTests
     {
         _mockLogger = new Mock<ILogger<FileController>>();
         _mockStorageClient = new Mock<StorageClient>();
+        _mockFileDeletionService = new Mock<IFileDeletionService>();
 
         var testSettings = Options.Create(new UploadSettings
         {
@@ -56,7 +59,7 @@ public class FileControllerTests
             BucketName = "dummy_bucket"
         });
 
-        _sut = new FileController(_mockLogger.Object, _mockStorageClient.Object, testSettings);
+        _sut = new FileController(_mockLogger.Object, _mockStorageClient.Object, testSettings, _mockFileDeletionService.Object);
     }
 
     [Fact]
@@ -356,7 +359,7 @@ public class FileControllerTests
             StoragePath = tempDir
         });
 
-        var sut = new FileController(_mockLogger.Object, _mockStorageClient.Object, testSettings);
+        var sut = new FileController(_mockLogger.Object, _mockStorageClient.Object, testSettings, _mockFileDeletionService.Object);
         SetupStorageClientThrows(new Exception("GCS unavailable"));
 
         try
@@ -389,6 +392,74 @@ public class FileControllerTests
                 It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Failed to save upload file to bucket")),
                 It.IsAny<Exception>(),
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData("../evil.txt")]
+    [InlineData("..\\evil.txt")]
+    [InlineData("folder/file.txt")]
+    [InlineData("folder\\file.txt")]
+    public async Task DeleteFile_WhenFilenameIsInvalid_ReturnsBadRequest(string fileName)
+    {
+        var result = await _sut.DeleteFile(fileName, CancellationToken.None);
+
+        var bad = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Equal("Filename is invalid or missing.", bad.Value);
+    }
+
+    [Fact]
+    public async Task DeleteFile_WhenServiceReturnsDeleted_ReturnsNoContent()
+    {
+        _mockFileDeletionService
+            .Setup(s => s.DeleteFileAsync("exists.txt", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(DeleteFileResult.Deleted);
+
+        var result = await _sut.DeleteFile("exists.txt", CancellationToken.None);
+
+        Assert.IsType<NoContentResult>(result);
+    }
+
+    [Fact]
+    public async Task DeleteFile_WhenServiceReturnsNotFound_ReturnsNotFound()
+    {
+        _mockFileDeletionService
+            .Setup(s => s.DeleteFileAsync("missing.txt", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(DeleteFileResult.NotFound);
+
+        var result = await _sut.DeleteFile("missing.txt", CancellationToken.None);
+
+        var notFound = Assert.IsType<NotFoundObjectResult>(result);
+        Assert.Equal("File not found.", notFound.Value);
+    }
+
+    [Fact]
+    public async Task DeleteFile_WhenServiceReturnsError_ReturnsInternalServerError()
+    {
+        _mockFileDeletionService
+            .Setup(s => s.DeleteFileAsync("error.txt", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(DeleteFileResult.Error);
+
+        var result = await _sut.DeleteFile("error.txt", CancellationToken.None);
+
+        var error = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(500, error.StatusCode);
+        Assert.Equal("Internal Server Error", error.Value);
+    }
+
+    [Fact]
+    public async Task DeleteFile_WhenFilenameIsValid_CallsServiceWithFilename()
+    {
+        _mockFileDeletionService
+            .Setup(s => s.DeleteFileAsync("valid-file.pdf", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(DeleteFileResult.Deleted);
+
+        await _sut.DeleteFile("valid-file.pdf", CancellationToken.None);
+
+        _mockFileDeletionService.Verify(
+            s => s.DeleteFileAsync("valid-file.pdf", It.IsAny<CancellationToken>()),
             Times.Once);
     }
 }
