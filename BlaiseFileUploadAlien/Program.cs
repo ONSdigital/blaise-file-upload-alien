@@ -24,6 +24,7 @@ builder.Services.Configure<UploadSettings>(options =>
 });
 
 builder.Services.AddScoped<IFileDeletionService, GcpFileDeletionService>();
+builder.Services.AddScoped<IFileUploadService, GcpFileUploadService>();
 
 async Task<bool> IsRunningOnGcpVm()
 {
