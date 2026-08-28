@@ -26,7 +26,7 @@ public class FileControllerTests
     [Fact]
     public async Task StoreFile_WhenFileDtoIsNull_ReturnsBadRequest()
     {
-        var result = await _sut.StoreFile(null, CancellationToken.None);
+        var result = await _sut.StoreFile(null!, CancellationToken.None);
 
         var bad = Assert.IsType<BadRequestObjectResult>(result);
         Assert.Equal("No file provided or file is empty.", bad.Value);
@@ -35,7 +35,7 @@ public class FileControllerTests
     [Fact]
     public async Task StoreFile_WhenFileStreamIsNull_ReturnsBadRequest()
     {
-        var dto = new FileDto { File = null, Id = 1, FileMeta = "meta" };
+        var dto = new FileDto { File = null!, Id = 1, FileMeta = "meta" };
 
         var result = await _sut.StoreFile(dto, CancellationToken.None);
 
