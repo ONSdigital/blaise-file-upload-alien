@@ -28,12 +28,12 @@ public class GcpFileDeletionServiceTests
         _mockStorageClient
             .Setup(s => s.DeleteObjectAsync(
                 "test-bucket",
-                "existing-file.txt",
+                "12345_receipt_ABC12345.jpg",
                 It.IsAny<DeleteObjectOptions>(),
                 It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        var result = await sut.DeleteFileAsync("existing-file.txt", CancellationToken.None);
+        var result = await sut.DeleteFileAsync("12345_receipt_ABC12345.jpg", CancellationToken.None);
 
         Assert.Equal(DeleteFileResult.Deleted, result);
     }
@@ -54,7 +54,7 @@ public class GcpFileDeletionServiceTests
                 HttpStatusCode = HttpStatusCode.NotFound
             });
 
-        var result = await sut.DeleteFileAsync("missing-file.txt", CancellationToken.None);
+        var result = await sut.DeleteFileAsync("12345_receipt_MISSING1.jpg", CancellationToken.None);
 
         Assert.Equal(DeleteFileResult.NotFound, result);
     }
@@ -72,7 +72,7 @@ public class GcpFileDeletionServiceTests
                 It.IsAny<CancellationToken>()))
             .ThrowsAsync(new Exception("network failure"));
 
-        var result = await sut.DeleteFileAsync("any-file.txt", CancellationToken.None);
+        var result = await sut.DeleteFileAsync("12345_receipt_ERROR001.jpg", CancellationToken.None);
 
         Assert.Equal(DeleteFileResult.Error, result);
     }
@@ -82,7 +82,7 @@ public class GcpFileDeletionServiceTests
     {
         var sut = BuildSutWithBucket(string.Empty);
 
-        var result = await sut.DeleteFileAsync("file.txt", CancellationToken.None);
+        var result = await sut.DeleteFileAsync("12345_receipt_ABC12345.jpg", CancellationToken.None);
 
         Assert.Equal(DeleteFileResult.Error, result);
         _mockStorageClient.Verify(
@@ -107,12 +107,12 @@ public class GcpFileDeletionServiceTests
                 It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        await sut.DeleteFileAsync("report.pdf", CancellationToken.None);
+        await sut.DeleteFileAsync("12345_receipt_VALID001.jpg", CancellationToken.None);
 
         _mockStorageClient.Verify(
             s => s.DeleteObjectAsync(
                 "configured-bucket",
-                "report.pdf",
+                "12345_receipt_VALID001.jpg",
                 It.IsAny<DeleteObjectOptions>(),
                 It.IsAny<CancellationToken>()),
             Times.Once);
