@@ -54,7 +54,7 @@ public class GcpFileDeletionServiceTests
                 HttpStatusCode = HttpStatusCode.NotFound
             });
 
-        var result = await sut.DeleteFileAsync("12345_receipt_MISSING1.jpg", CancellationToken.None);
+        var result = await sut.DeleteFileAsync("12345_receipt_ABC12345.jpg", CancellationToken.None);
 
         Assert.Equal(DeleteFileResult.NotFound, result);
     }
@@ -72,7 +72,7 @@ public class GcpFileDeletionServiceTests
                 It.IsAny<CancellationToken>()))
             .ThrowsAsync(new Exception("network failure"));
 
-        var result = await sut.DeleteFileAsync("12345_receipt_ERROR001.jpg", CancellationToken.None);
+        var result = await sut.DeleteFileAsync("12345_receipt_ABC12345.jpg", CancellationToken.None);
 
         Assert.Equal(DeleteFileResult.Error, result);
     }
@@ -107,12 +107,12 @@ public class GcpFileDeletionServiceTests
                 It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        await sut.DeleteFileAsync("12345_receipt_VALID001.jpg", CancellationToken.None);
+        await sut.DeleteFileAsync("12345_receipt_ABC12345.jpg", CancellationToken.None);
 
         _mockStorageClient.Verify(
             s => s.DeleteObjectAsync(
                 "configured-bucket",
-                "12345_receipt_VALID001.jpg",
+                "12345_receipt_ABC12345.jpg",
                 It.IsAny<DeleteObjectOptions>(),
                 It.IsAny<CancellationToken>()),
             Times.Once);

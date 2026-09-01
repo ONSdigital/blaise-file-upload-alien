@@ -195,10 +195,10 @@ public class FileControllerTests
     public async Task DeleteFile_WhenServiceReturnsNotFound_ReturnsNotFound()
     {
         _mockFileDeletionService
-            .Setup(s => s.DeleteFileAsync("12345_receipt_MISSING1.jpg", It.IsAny<CancellationToken>()))
+            .Setup(s => s.DeleteFileAsync("12345_receipt_ABC12345.jpg", It.IsAny<CancellationToken>()))
             .ReturnsAsync(DeleteFileResult.NotFound);
 
-        var result = await _sut.DeleteFile("12345_receipt_MISSING1.jpg", CancellationToken.None);
+        var result = await _sut.DeleteFile("12345_receipt_ABC12345.jpg", CancellationToken.None);
 
         var notFound = Assert.IsType<NotFoundObjectResult>(result);
         Assert.Equal("File not found.", notFound.Value);
@@ -208,10 +208,10 @@ public class FileControllerTests
     public async Task DeleteFile_WhenServiceReturnsError_ReturnsInternalServerError()
     {
         _mockFileDeletionService
-            .Setup(s => s.DeleteFileAsync("12345_receipt_ERROR001.jpg", It.IsAny<CancellationToken>()))
+            .Setup(s => s.DeleteFileAsync("12345_receipt_ABC12345.jpg", It.IsAny<CancellationToken>()))
             .ReturnsAsync(DeleteFileResult.Error);
 
-        var result = await _sut.DeleteFile("12345_receipt_ERROR001.jpg", CancellationToken.None);
+        var result = await _sut.DeleteFile("12345_receipt_ABC12345.jpg", CancellationToken.None);
 
         var error = Assert.IsType<ObjectResult>(result);
         Assert.Equal(500, error.StatusCode);
@@ -222,13 +222,13 @@ public class FileControllerTests
     public async Task DeleteFile_WhenFilenameIsValid_CallsServiceWithFilename()
     {
         _mockFileDeletionService
-            .Setup(s => s.DeleteFileAsync("12345_receipt_VALID001.jpg", It.IsAny<CancellationToken>()))
+            .Setup(s => s.DeleteFileAsync("12345_receipt_ABC12345.jpg", It.IsAny<CancellationToken>()))
             .ReturnsAsync(DeleteFileResult.Deleted);
 
-        await _sut.DeleteFile("12345_receipt_VALID001.jpg", CancellationToken.None);
+        await _sut.DeleteFile("12345_receipt_ABC12345.jpg", CancellationToken.None);
 
         _mockFileDeletionService.Verify(
-            s => s.DeleteFileAsync("12345_receipt_VALID001.jpg", It.IsAny<CancellationToken>()),
+            s => s.DeleteFileAsync("12345_receipt_ABC12345.jpg", It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
