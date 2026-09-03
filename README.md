@@ -2,7 +2,7 @@
 
 ## Overview
 
-Blaise File Upload Alien is a minimal ASP.NET Core Web API (using .NET 10) for uploading files. It is designed as a **proof of concept** to demonstrate file upload handling for Blaise questionnaires. The API works both locally (as a console app) and as a Windows service on a Google Cloud Platform (GCP) VM. It exposes a single endpoint for file uploads and stores files on disk with metadata and unique IDs. Logging is automatically configured for both local development and GCP environments.
+Blaise File Upload Alien is a minimal ASP.NET Core Web API (using .NET 10) for managing file uploads. It is designed as a **proof of concept** to demonstrate file upload handling for Blaise questionnaires. The API works both locally (as a console app) and as a Windows service on a Google Cloud Platform (GCP) VM. It exposes endpoints for uploading and deleting files and stores files with metadata and unique IDs. Logging is automatically configured for both local development and GCP environments.
 
 > **Note:** Files are uploaded to the RAT cloud storage bucket. Currently work is underway to add a pipeline
 
@@ -88,6 +88,15 @@ Blaise File Upload Alien is a minimal ASP.NET Core Web API (using .NET 10) for u
         - `FileMeta` (string): Metadata for the file
         - `File` (int[]): File contents as an array of bytes
     - Returns: The filename used to store the file (including a short unique ID and extension)
+
+- **DELETE** `/api/file/{filename}`
+  - Deletes the named file from the configured GCP storage bucket.
+  - `filename` must be a non-empty plain filename and must not contain `/`, `\`, `../`, or `..\` path components.
+  - Responses:
+    - `204 No Content`: The file was deleted.
+    - `400 Bad Request`: The filename is missing or invalid.
+    - `404 Not Found`: The file does not exist in the bucket.
+    - `500 Internal Server Error`: The deletion could not be completed.
 
 ## Environment Detection & Logging
 
