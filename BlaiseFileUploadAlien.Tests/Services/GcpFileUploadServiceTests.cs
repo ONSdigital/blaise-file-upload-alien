@@ -222,6 +222,44 @@ public class GcpFileUploadServiceTests
     }
 
     [Fact]
+    public async Task UploadFileAsync_WhenAllUploadAttemptsFail_WritesCompleteFileToFallbackDirectory()
+    {
+        var storagePath = Path.Combine(Path.GetTempPath(), $"blaise-file-upload-{Guid.NewGuid():N}");
+        var expectedContents = Enumerable.Range(0, 100).Select(index => (byte)index).ToArray();
+        Array.Copy(PngHeader, expectedContents, PngHeader.Length);
+
+        try
+        {
+            var sut = BuildSutWithBucket("test-bucket", storagePath);
+            using var fileStream = new MemoryStream(expectedContents);
+
+            _mockStorageClient
+                .Setup(s => s.UploadObjectAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<Stream>(),
+                    It.IsAny<UploadObjectOptions>(),
+                    It.IsAny<CancellationToken>(),
+                    It.IsAny<IProgress<IUploadProgress>>()))
+                .ThrowsAsync(new Exception("Network failure"));
+
+            await sut.UploadFileAsync(fileStream, 123, "receipt", CancellationToken.None);
+
+            var fallbackFile = Assert.Single(Directory.GetFiles(storagePath));
+            Assert.StartsWith("123_receipt_", Path.GetFileName(fallbackFile));
+            Assert.Equal(expectedContents, await File.ReadAllBytesAsync(fallbackFile));
+        }
+        finally
+        {
+            if (Directory.Exists(storagePath))
+            {
+                Directory.Delete(storagePath, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public async Task UploadFileAsync_WhenRequestIsCancelled_RethrowsCancellationWithoutRetrying()
     {
         var sut = BuildSutWithBucket("test-bucket", "C:\\temp");
