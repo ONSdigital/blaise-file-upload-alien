@@ -1,5 +1,6 @@
 using BlaiseFileUploadAlien.Configuration;
 using BlaiseFileUploadAlien.Services;
+using Google.Apis.Upload;
 using Google.Cloud.Storage.V1;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -48,7 +49,8 @@ public class GcpFileUploadServiceTests
                 It.IsAny<string>(),
                 It.IsAny<Stream>(),
                 It.IsAny<UploadObjectOptions>(),
-                It.IsAny<CancellationToken>()))
+                It.IsAny<CancellationToken>(),
+                It.IsAny<IProgress<IUploadProgress>>()))
             .ReturnsAsync(new GcsObject());
 
         var (status, filename) = await sut.UploadFileAsync(fileStream, 123, "receipt", CancellationToken.None);
@@ -73,7 +75,8 @@ public class GcpFileUploadServiceTests
                 It.IsAny<string>(),
                 It.IsAny<Stream>(),
                 It.IsAny<UploadObjectOptions>(),
-                It.IsAny<CancellationToken>()))
+                It.IsAny<CancellationToken>(),
+                It.IsAny<IProgress<IUploadProgress>>()))
             .ReturnsAsync(new GcsObject());
 
         var (status, filename) = await sut.UploadFileAsync(fileStream, 1, "meta", CancellationToken.None);
@@ -99,7 +102,8 @@ public class GcpFileUploadServiceTests
                 It.IsAny<string>(),
                 It.IsAny<Stream>(),
                 It.IsAny<UploadObjectOptions>(),
-                It.IsAny<CancellationToken>()),
+                It.IsAny<CancellationToken>(),
+                It.IsAny<IProgress<IUploadProgress>>()),
             Times.Never);
     }
 
@@ -128,7 +132,8 @@ public class GcpFileUploadServiceTests
                 It.IsAny<string>(),
                 It.IsAny<Stream>(),
                 It.IsAny<UploadObjectOptions>(),
-                It.IsAny<CancellationToken>()))
+                It.IsAny<CancellationToken>(),
+                It.IsAny<IProgress<IUploadProgress>>()))
             .ReturnsAsync(new GcsObject());
 
         await sut.UploadFileAsync(fileStream, 456, "expense", CancellationToken.None);
@@ -140,7 +145,8 @@ public class GcpFileUploadServiceTests
                 "image/png",
                 It.IsAny<Stream>(),
                 It.IsAny<UploadObjectOptions>(),
-                It.IsAny<CancellationToken>()),
+                It.IsAny<CancellationToken>(),
+                It.IsAny<IProgress<IUploadProgress>>()),
             Times.Once);
     }
 
@@ -162,7 +168,8 @@ public class GcpFileUploadServiceTests
                 It.IsAny<string>(),
                 It.IsAny<Stream>(),
                 It.IsAny<UploadObjectOptions>(),
-                It.IsAny<CancellationToken>()))
+                It.IsAny<CancellationToken>(),
+                It.IsAny<IProgress<IUploadProgress>>()))
             .Returns(() => callSequence.Dequeue()());
 
         var (status, filename) = await sut.UploadFileAsync(fileStream, 123, "receipt", CancellationToken.None);
@@ -176,7 +183,8 @@ public class GcpFileUploadServiceTests
                 It.IsAny<string>(),
                 It.IsAny<Stream>(),
                 It.IsAny<UploadObjectOptions>(),
-                It.IsAny<CancellationToken>()),
+                It.IsAny<CancellationToken>(),
+                It.IsAny<IProgress<IUploadProgress>>()),
             Times.Exactly(2));
     }
 
@@ -193,7 +201,8 @@ public class GcpFileUploadServiceTests
                 It.IsAny<string>(),
                 It.IsAny<Stream>(),
                 It.IsAny<UploadObjectOptions>(),
-                It.IsAny<CancellationToken>()))
+                It.IsAny<CancellationToken>(),
+                It.IsAny<IProgress<IUploadProgress>>()))
             .ThrowsAsync(new Exception("Network failure"));
 
         var (status, filename) = await sut.UploadFileAsync(fileStream, 123, "receipt", CancellationToken.None);
@@ -207,7 +216,8 @@ public class GcpFileUploadServiceTests
                 It.IsAny<string>(),
                 It.IsAny<Stream>(),
                 It.IsAny<UploadObjectOptions>(),
-                It.IsAny<CancellationToken>()),
+                It.IsAny<CancellationToken>(),
+                It.IsAny<IProgress<IUploadProgress>>()),
             Times.Exactly(3));
     }
 
@@ -236,7 +246,8 @@ public class GcpFileUploadServiceTests
                 It.IsAny<string>(),
                 It.IsAny<Stream>(),
                 It.IsAny<UploadObjectOptions>(),
-                It.IsAny<CancellationToken>()))
+                It.IsAny<CancellationToken>(),
+                It.IsAny<IProgress<IUploadProgress>>()))
             .ReturnsAsync(new GcsObject());
 
         var (status, filename) = await sut.UploadFileAsync(fileStream, 123, "receipt", CancellationToken.None);
