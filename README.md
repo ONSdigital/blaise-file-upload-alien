@@ -94,8 +94,9 @@ Blaise File Upload Alien is a minimal ASP.NET Core Web API (using .NET 10) for m
   - `filename` must be a non-empty plain filename and must not contain `/`, `\`, `../`, or `..\` path components.
   - Responses:
     - `204 No Content`: The file was deleted.
-    - `400 Bad Request`: The filename is missing or invalid.
+    - `400 Bad Request`: The supplied filename is invalid.
     - `404 Not Found`: The file does not exist in the bucket.
+    - `405 Method Not Allowed`: No filename route value was supplied (`DELETE /api/file`).
     - `500 Internal Server Error`: The deletion could not be completed.
 
 ## Environment Detection & Logging
