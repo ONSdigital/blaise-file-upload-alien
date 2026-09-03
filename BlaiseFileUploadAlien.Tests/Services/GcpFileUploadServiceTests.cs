@@ -19,6 +19,8 @@ public class GcpFileUploadServiceTests
     private static readonly byte[] GifHeader = { 0x47, 0x49, 0x46, 0x38 };
     private static readonly byte[] PdfHeader = { 0x25, 0x50, 0x44, 0x46 };
     private static readonly byte[] ZipHeader = { 0x50, 0x4B, 0x03, 0x04 };
+    private static readonly byte[] EmptyZipHeader = { 0x50, 0x4B, 0x05, 0x06 };
+    private static readonly byte[] SpannedZipHeader = { 0x50, 0x4B, 0x07, 0x08 };
     private static readonly byte[] BadHeader = { 0x00, 0x00, 0x00, 0x00 };
 
     public static IEnumerable<object[]> ValidFileTypesData =>
@@ -28,6 +30,18 @@ public class GcpFileUploadServiceTests
         [ GifHeader, "gif" ],
         [ PdfHeader, "pdf" ],
         [ ZipHeader, "zip" ],
+        [ EmptyZipHeader, "zip" ],
+        [ SpannedZipHeader, "zip" ],
+    ];
+
+    public static IEnumerable<object[]> InvalidFileTypesData =>
+    [
+        [ BadHeader ],
+        [ new byte[] { 0x89, 0x50, 0x00, 0x00 } ],
+        [ new byte[] { 0xFF, 0xD8, 0x00, 0x00 } ],
+        [ new byte[] { 0x47, 0x49, 0x46, 0x00 } ],
+        [ new byte[] { 0x25, 0x50, 0x00, 0x00 } ],
+        [ new byte[] { 0x50, 0x4B, 0x00, 0x00 } ],
     ];
 
     public GcpFileUploadServiceTests()
@@ -85,11 +99,12 @@ public class GcpFileUploadServiceTests
         Assert.EndsWith($".{expectedExt}", filename);
     }
 
-    [Fact]
-    public async Task UploadFileAsync_WhenFileHasInvalidSignature_ReturnsInvalidFileAndNoUpload()
+    [Theory]
+    [MemberData(nameof(InvalidFileTypesData))]
+    public async Task UploadFileAsync_WhenFileHasInvalidSignature_ReturnsInvalidFileAndNoUpload(byte[] header)
     {
         var sut = BuildSutWithBucket("test-bucket", "C:\\temp");
-        var fileStream = BuildStream(BadHeader);
+        var fileStream = BuildStream(header);
 
         var (status, filename) = await sut.UploadFileAsync(fileStream, 123, "receipt", CancellationToken.None);
 

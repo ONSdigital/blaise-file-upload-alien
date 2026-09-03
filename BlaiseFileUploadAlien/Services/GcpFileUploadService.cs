@@ -145,11 +145,11 @@ public class GcpFileUploadService : IFileUploadService
 
         stream.Position = 0;
 
-        if (buffer[0] == 0x89 && buffer[1] == 0x50) return (true, "png");
-        if (buffer[0] == 0xFF && buffer[1] == 0xD8) return (true, "jpg");
-        if (buffer[0] == 0x47 && buffer[1] == 0x49 && buffer[2] == 0x46) return (true, "gif");
-        if (buffer[0] == 0x25 && buffer[1] == 0x50) return (true, "pdf");
-        if (buffer[0] == 0x50 && buffer[1] == 0x4B) return (true, "zip");
+        if (buffer is [0x89, 0x50, 0x4E, 0x47]) return (true, "png");
+        if (buffer is [0xFF, 0xD8, 0xFF, _]) return (true, "jpg");
+        if (buffer is [0x47, 0x49, 0x46, 0x38]) return (true, "gif");
+        if (buffer is [0x25, 0x50, 0x44, 0x46]) return (true, "pdf");
+        if (buffer is [0x50, 0x4B, 0x03, 0x04] or [0x50, 0x4B, 0x05, 0x06] or [0x50, 0x4B, 0x07, 0x08]) return (true, "zip");
 
         return (false, string.Empty);
     }
