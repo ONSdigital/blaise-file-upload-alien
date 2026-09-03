@@ -234,7 +234,7 @@ public class GcpFileUploadServiceTests
     }
 
     [Fact]
-    public async Task UploadFileAsync_WhenUploadSucceeds_GeneratedFilenameCotainsEightCharShortId()
+    public async Task UploadFileAsync_WhenUploadSucceeds_GeneratedFilenameContainsEightCharShortId()
     {
         var sut = BuildSutWithBucket("test-bucket", "C:\\temp");
         var fileStream = BuildStream(PngHeader);
