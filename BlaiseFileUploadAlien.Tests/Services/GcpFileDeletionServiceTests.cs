@@ -78,6 +78,25 @@ public class GcpFileDeletionServiceTests
     }
 
     [Fact]
+    public async Task DeleteFileAsync_WhenRequestIsCancelled_RethrowsCancellation()
+    {
+        var sut = BuildSutWithBucket("test-bucket");
+        using var cancellationTokenSource = new CancellationTokenSource();
+        cancellationTokenSource.Cancel();
+
+        _mockStorageClient
+            .Setup(s => s.DeleteObjectAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<DeleteObjectOptions>(),
+                cancellationTokenSource.Token))
+            .ThrowsAsync(new OperationCanceledException(cancellationTokenSource.Token));
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() =>
+            sut.DeleteFileAsync("12345_receipt_ABC12345.jpg", cancellationTokenSource.Token));
+    }
+
+    [Fact]
     public async Task DeleteFileAsync_WhenBucketNameIsMissing_ReturnsErrorAndSkipsStorageCall()
     {
         var sut = BuildSutWithBucket(string.Empty);

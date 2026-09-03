@@ -45,6 +45,10 @@ public class GcpFileDeletionService : IFileDeletionService
             _logger.LogWarning("File {Filename} not found in bucket {BucketName}", filename, _uploadSettings.BucketName);
             return DeleteFileResult.NotFound;
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to delete file {Filename} from bucket {BucketName}", filename, _uploadSettings.BucketName);
