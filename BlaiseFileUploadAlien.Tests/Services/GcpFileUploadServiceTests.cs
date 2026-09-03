@@ -222,6 +222,40 @@ public class GcpFileUploadServiceTests
     }
 
     [Fact]
+    public async Task UploadFileAsync_WhenRequestIsCancelled_RethrowsCancellationWithoutRetrying()
+    {
+        var sut = BuildSutWithBucket("test-bucket", "C:\\temp");
+        var fileStream = BuildStream(PngHeader);
+        using var cancellationTokenSource = new CancellationTokenSource();
+
+        _mockStorageClient
+            .Setup(s => s.UploadObjectAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<Stream>(),
+                It.IsAny<UploadObjectOptions>(),
+                cancellationTokenSource.Token,
+                It.IsAny<IProgress<IUploadProgress>>()))
+            .Callback(cancellationTokenSource.Cancel)
+            .ThrowsAsync(new OperationCanceledException());
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            sut.UploadFileAsync(fileStream, 123, "receipt", cancellationTokenSource.Token));
+
+        _mockStorageClient.Verify(
+            s => s.UploadObjectAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<Stream>(),
+                It.IsAny<UploadObjectOptions>(),
+                cancellationTokenSource.Token,
+                It.IsAny<IProgress<IUploadProgress>>()),
+            Times.Once);
+    }
+
+    [Fact]
     public async Task UploadFileAsync_WhenBucketNameIsMissing_ReturnsError()
     {
         var sut = BuildSutWithBucket(string.Empty, "C:\\temp");

@@ -53,6 +53,10 @@ public class GcpFileUploadService : IFileUploadService
 
             return (FileUploadStatus.Success, fileName);
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to save file for case {CaseId}", caseId);
@@ -93,6 +97,10 @@ public class GcpFileUploadService : IFileUploadService
 
                 _logger.LogInformation($"Successfully uploaded {remoteFileName} on attempt {attempt}.");
                 return;
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
             }
             catch (Exception ex)
             {
