@@ -1,4 +1,5 @@
 using BlaiseFileUploadAlien.Configuration;
+using BlaiseFileUploadAlien.Services;
 using Google.Apis.Auth.OAuth2;
 using Google.Cloud.Diagnostics.AspNetCore3;
 using Google.Cloud.Storage.V1;
@@ -21,6 +22,9 @@ builder.Services.Configure<UploadSettings>(options =>
         options.BucketName = envBucket;
     }
 });
+
+builder.Services.AddScoped<IFileDeletionService, GcpFileDeletionService>();
+builder.Services.AddScoped<IFileUploadService, GcpFileUploadService>();
 
 async Task<bool> IsRunningOnGcpVm()
 {

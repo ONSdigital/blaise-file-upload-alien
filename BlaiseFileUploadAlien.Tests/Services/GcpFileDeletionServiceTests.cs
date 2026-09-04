@@ -1,0 +1,152 @@
+using BlaiseFileUploadAlien.Configuration;
+using BlaiseFileUploadAlien.Services;
+using Google;
+using Google.Cloud.Storage.V1;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Moq;
+using System.Net;
+
+namespace BlaiseFileUploadAlien.Tests.Services;
+
+public class GcpFileDeletionServiceTests
+{
+    private readonly Mock<ILogger<GcpFileDeletionService>> _mockLogger;
+    private readonly Mock<StorageClient> _mockStorageClient;
+
+    public GcpFileDeletionServiceTests()
+    {
+        _mockLogger = new Mock<ILogger<GcpFileDeletionService>>();
+        _mockStorageClient = new Mock<StorageClient>();
+    }
+
+    [Fact]
+    public async Task DeleteFileAsync_WhenDeleteSucceeds_ReturnsDeleted()
+    {
+        var sut = BuildSutWithBucket("test-bucket");
+
+        _mockStorageClient
+            .Setup(s => s.DeleteObjectAsync(
+                "test-bucket",
+                "12345_receipt_ABC12345.jpg",
+                It.IsAny<DeleteObjectOptions>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var result = await sut.DeleteFileAsync("12345_receipt_ABC12345.jpg", CancellationToken.None);
+
+        Assert.Equal(DeleteFileResult.Deleted, result);
+    }
+
+    [Fact]
+    public async Task DeleteFileAsync_WhenFileDoesNotExist_ReturnsNotFound()
+    {
+        var sut = BuildSutWithBucket("test-bucket");
+
+        _mockStorageClient
+            .Setup(s => s.DeleteObjectAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<DeleteObjectOptions>(),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new GoogleApiException("storage", "Not Found")
+            {
+                HttpStatusCode = HttpStatusCode.NotFound
+            });
+
+        var result = await sut.DeleteFileAsync("12345_receipt_ABC12345.jpg", CancellationToken.None);
+
+        Assert.Equal(DeleteFileResult.NotFound, result);
+    }
+
+    [Fact]
+    public async Task DeleteFileAsync_WhenStorageClientThrowsUnexpectedException_ReturnsError()
+    {
+        var sut = BuildSutWithBucket("test-bucket");
+
+        _mockStorageClient
+            .Setup(s => s.DeleteObjectAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<DeleteObjectOptions>(),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new Exception("network failure"));
+
+        var result = await sut.DeleteFileAsync("12345_receipt_ABC12345.jpg", CancellationToken.None);
+
+        Assert.Equal(DeleteFileResult.Error, result);
+    }
+
+    [Fact]
+    public async Task DeleteFileAsync_WhenRequestIsCancelled_RethrowsCancellation()
+    {
+        var sut = BuildSutWithBucket("test-bucket");
+        using var cancellationTokenSource = new CancellationTokenSource();
+        cancellationTokenSource.Cancel();
+
+        _mockStorageClient
+            .Setup(s => s.DeleteObjectAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<DeleteObjectOptions>(),
+                cancellationTokenSource.Token))
+            .ThrowsAsync(new OperationCanceledException(cancellationTokenSource.Token));
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() =>
+            sut.DeleteFileAsync("12345_receipt_ABC12345.jpg", cancellationTokenSource.Token));
+    }
+
+    [Fact]
+    public async Task DeleteFileAsync_WhenBucketNameIsMissing_ReturnsErrorAndSkipsStorageCall()
+    {
+        var sut = BuildSutWithBucket(string.Empty);
+
+        var result = await sut.DeleteFileAsync("12345_receipt_ABC12345.jpg", CancellationToken.None);
+
+        Assert.Equal(DeleteFileResult.Error, result);
+        _mockStorageClient.Verify(
+            s => s.DeleteObjectAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<DeleteObjectOptions>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task DeleteFileAsync_WhenDeleteSucceeds_CallsStorageClientWithConfiguredBucketAndFilename()
+    {
+        var sut = BuildSutWithBucket("configured-bucket");
+
+        _mockStorageClient
+            .Setup(s => s.DeleteObjectAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<DeleteObjectOptions>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        await sut.DeleteFileAsync("12345_receipt_ABC12345.jpg", CancellationToken.None);
+
+        _mockStorageClient.Verify(
+            s => s.DeleteObjectAsync(
+                "configured-bucket",
+                "12345_receipt_ABC12345.jpg",
+                It.IsAny<DeleteObjectOptions>(),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    private GcpFileDeletionService BuildSutWithBucket(string bucketName)
+    {
+        var options = Options.Create(new UploadSettings
+        {
+            BucketName = bucketName
+        });
+
+        return new GcpFileDeletionService(
+            _mockLogger.Object,
+            _mockStorageClient.Object,
+            options);
+    }
+}
